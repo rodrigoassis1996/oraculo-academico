@@ -1,0 +1,188 @@
+# services/model_manager.py
+"""Gerenciador de modelos e chains com suporte a RAG."""
+
+import streamlit as st
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
+
+from config.settings import CONFIG_MODELOS
+from services.rag_manager import RAGManager
+
+class ModelManager:
+    """Gerencia criação de chains e memória de conversação com RAG."""
+
+    def __init__(self):
+        self._init_session_state()
+        self.rag_manager = RAGManager()
+
+    def _init_session_state(self) -> None:
+        """Inicializa keys no session_state."""
+        if 'chain' not in st.session_state:
+            st.session_state['chain'] = None
+        if 'mensagens' not in st.session_state:
+            st.session_state['mensagens'] = []  # Lista simples de mensagens
+        if 'usar_rag' not in st.session_state:
+            st.session_state['usar_rag'] = True
+
+    @property
+    def chain(self):
+        return st.session_state.get('chain')
+
+    @property
+    def mensagens(self) -> list:
+        return st.session_state.get('mensagens', [])
+
+    @property
+    def usar_rag(self) -> bool:
+        return st.session_state.get('usar_rag', True)
+
+    def adicionar_mensagem(self, role: str, content: str):
+        """Adiciona mensagem ao histórico."""
+        st.session_state['mensagens'].append({
+            'role': role,
+            'content': content
+        })
+
+    def get_historico_langchain(self) -> list:
+        """Retorna histórico no formato LangChain."""
+        historico = []
+        for msg in self.mensagens:
+            if msg['role'] == 'human':
+                historico.append(HumanMessage(content=msg['content']))
+            else:
+                historico.append(AIMessage(content=msg['content']))
+        return historico
+
+    def criar_chain_rag(
+        self,
+        documentos: list,
+        provedor: str = 'OpenAI',
+        modelo: str = 'gpt-4o-mini-2024-07-18',
+        api_key: str = None,
+        progress_callback=None
+    ):
+        """Cria chain com RAG."""
+        config = CONFIG_MODELOS.get(provedor)
+        if not config:
+            raise ValueError(f"Provedor '{provedor}' não configurado.")
+        
+        api_key = api_key or config.get('default_api_key')
+        if not api_key:
+            raise ValueError(f"API key não fornecida para {provedor}.")
+        
+        # Indexa documentos no RAG
+        stats = self.rag_manager.indexar_documentos(
+            documentos, 
+            progress_callback=progress_callback
+        )
+        
+        # Cria o modelo LLM
+        llm = config['chat'](
+            model=modelo,
+            api_key=api_key,
+            temperature=0.7
+        )
+        
+        st.session_state['llm'] = llm
+        st.session_state['chain'] = "RAG_MODE"
+        st.session_state['usar_rag'] = True
+        st.session_state['rag_stats'] = stats
+        
+        return stats
+
+    def gerar_resposta_rag(self, pergunta: str):
+        """Gera resposta usando RAG com streaming."""
+        llm = st.session_state.get('llm')
+        if not llm:
+            raise ValueError("LLM não inicializado.")
+        
+        # Recupera contexto relevante
+        contexto = self.rag_manager.get_contexto_para_prompt(pergunta)
+        
+        if not contexto:
+            contexto = "Nenhum contexto relevante encontrado nos documentos."
+        
+        system_message = '''Você é um assistente acadêmico especializado. 
+    Responda à pergunta baseando-se EXCLUSIVAMENTE no contexto fornecido.
+
+    CONTEXTO DOS DOCUMENTOS:
+    {contexto}
+
+    INSTRUÇÕES:
+    1. Use apenas informações do contexto acima.
+    2. Se não encontrar a informação, diga claramente.
+    3. Cite a fonte quando possível.
+    4. Seja claro, preciso e acadêmico.
+    '''
+        
+        template = ChatPromptTemplate.from_messages([
+            ('system', system_message.format(contexto=contexto)),
+            ('placeholder', '{chat_history}'),
+            ('user', '{input}')
+        ])
+        
+        chain = template | llm
+        
+        for chunk in chain.stream({
+            'input': pergunta,
+            'chat_history': self.get_historico_langchain()
+        }):
+            yield chunk.content
+
+    def criar_chain_simples(
+        self,
+        documentos_conteudo: str,
+        total_documentos: int,
+        provedor: str = 'OpenAI',
+        modelo: str = 'gpt-4o-mini-2024-07-18',
+        api_key: str = None
+    ):
+        """Cria chain simples (sem RAG)."""
+        config = CONFIG_MODELOS.get(provedor)
+        if not config:
+            raise ValueError(f"Provedor '{provedor}' não configurado.")
+        
+        api_key = api_key or config.get('default_api_key')
+        if not api_key:
+            raise ValueError(f"API key não fornecida para {provedor}.")
+        
+        system_message = '''Você é um assistente acadêmico.
+    Documentos ({total_docs}):
+
+    {documentos}
+
+    Use as informações acima para responder.
+    '''.format(total_docs=total_documentos, documentos=documentos_conteudo)
+        
+        template = ChatPromptTemplate.from_messages([
+            ('system', system_message),
+            ('placeholder', '{chat_history}'),
+            ('user', '{input}')
+        ])
+        
+        chat = config['chat'](
+            model=modelo,
+            api_key=api_key,
+            temperature=0.7
+        )
+        
+        chain = template | chat
+        st.session_state['chain'] = chain
+        st.session_state['usar_rag'] = False
+        
+        return chain
+
+    def limpar_memoria(self) -> None:
+        """Limpa histórico."""
+        st.session_state['mensagens'] = []
+
+    def limpar_chain(self) -> None:
+        """Remove chain atual."""
+        st.session_state['chain'] = None
+        st.session_state['llm'] = None
+        self.rag_manager.limpar_indice()
+
+    def reset_completo(self) -> None:
+        """Limpa tudo."""
+        self.limpar_chain()
+        self.limpar_memoria()
