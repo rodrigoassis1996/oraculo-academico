@@ -193,18 +193,18 @@ class UploadManager:
                 arquivo_ou_url.seek(0)  # Reset para leitura
             
             # Carrega conteúdo baseado no tipo
-            if tipo == TipoArquivo.SITE:
+            if tipo.value == TipoArquivo.SITE.value:
                 conteudo = self._carregar_site(arquivo_ou_url)
-            elif tipo == TipoArquivo.PDF:
+            elif tipo.value == TipoArquivo.PDF.value:
                 conteudo = self._carregar_com_temp_file(arquivo_ou_url, '.pdf', PyPDFLoader)
-            elif tipo == TipoArquivo.CSV:
+            elif tipo.value == TipoArquivo.CSV.value:
                 conteudo = self._carregar_com_temp_file(arquivo_ou_url, '.csv', CSVLoader)
-            elif tipo == TipoArquivo.TXT:
+            elif tipo.value == TipoArquivo.TXT.value:
                 conteudo = self._carregar_com_temp_file(arquivo_ou_url, '.txt', TextLoader)
-            elif tipo == TipoArquivo.DOCX:
+            elif tipo.value == TipoArquivo.DOCX.value:
                 conteudo = self._carregar_docx(arquivo_ou_url)
             else:
-                return False, f"Tipo {tipo} não suportado."
+                return False, f"Tipo {tipo} não suportado (valor: {tipo.value if hasattr(tipo, 'value') else tipo})."
             
             # Valida conteúdo
             if not conteudo or len(conteudo.strip()) < 10:

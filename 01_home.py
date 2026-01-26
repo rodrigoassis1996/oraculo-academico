@@ -20,15 +20,6 @@ st.markdown("""
 }
 /* Esconde footer padrão */
 footer {visibility: hidden;}
-
-/* Input fixo no fundo com fundo branco para não ficar transparente */
-.stChatInput {
-    position: fixed;
-    bottom: 0;
-    background-color: white;
-    padding-bottom: 1rem;
-    z-index: 9999;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -88,12 +79,8 @@ with tab_chat:
                 with st.chat_message(msg['role']):
                     st.markdown(msg['content'])
             
-            # Espaçador interno para garantir que a última mensagem não seja coberta pelo input fixo
-            # O st.container(height=...) rola automaticamente para o final desta div
-            st.markdown('<div style="padding-bottom: 0px;"></div>', unsafe_allow_html=True)
-            
-            # Espaçador no final das mensagens para evitar overlap com o input fixo
-            st.markdown('<div style="margin-bottom: 80px;"></div>', unsafe_allow_html=True)
+            # O st.container(height=...) rola automaticamente para o final
+            pass
 
         # 2. Input do Usuário (FIXO NO RODAPÉ DO NAVEGADOR)
         if prompt := st.chat_input('Fale com o Oráculo Acadêmico'):

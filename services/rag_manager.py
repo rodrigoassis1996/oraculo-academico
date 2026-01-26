@@ -141,16 +141,30 @@ class RAGManager:
         if not incremental:
             self.limpar_indice()
         
+        # Pega hashes atuais da UI para sincronização
+        hashes_atuais = set(d[2] for d in documentos)
+        
         # Pega coleção atual para verificar hashes
         try:
             collection = self.chroma_client.get_collection(self.config.collection_name)
             # Extrai hashes únicos já presentes na coleção
             existing_metadata = collection.get(include=['metadatas'])['metadatas']
             hashes_no_banco = set(m.get('hash') for m in existing_metadata if m.get('hash'))
-        except:
+            
+            # Sincronização: Remove do banco o que não está mais na lista da UI
+            hashes_para_deletar = hashes_no_banco - hashes_atuais
+            if hashes_para_deletar:
+                if progress_callback:
+                    progress_callback(0.1, f"Limpando {len(hashes_para_deletar)} documentos antigos...")
+                # Deleta usando o filtro de metadados
+                collection.delete(where={"hash": {"$in": list(hashes_para_deletar)}})
+                # Atualiza lista do que restou
+                hashes_no_banco = hashes_no_banco - hashes_para_deletar
+        except Exception as e:
             hashes_no_banco = set()
+            print(f"Aviso na sincronização: {e}")
 
-        novos_chunks = []
+        todos_chunks = []
         documentos_langchain = []
         
         total_docs = len(documentos)
@@ -158,12 +172,7 @@ class RAGManager:
         
         for i, (nome, conteudo, doc_hash) in enumerate(documentos):
             if progress_callback:
-                progress_callback((i + 1) / (total_docs + 1), f"Analisando {nome}...")
-            
-            # Pula se já estiver no banco
-            if incremental and doc_hash in hashes_no_banco:
-                docs_skipped += 1
-                continue
+                progress_callback((i + 1) / (total_docs + 1), f"Processando {nome}...")
             
             # Valida conteúdo
             is_valid, msg = self.text_processor.validar_conteudo_extraido(conteudo)
@@ -171,30 +180,52 @@ class RAGManager:
                 st.warning(f"⚠️ {nome}: {msg}")
                 continue
             
-            # Cria chunks
+            # Sempre gera chunks para o UI (processamento de texto é rápido)
             chunks = self.text_processor.criar_chunks(conteudo, nome)
+            todos_chunks.extend(chunks)
             
-            # Alimenta chunks com o hash para persistência
-            for chunk in chunks:
-                doc = Document(
-                    page_content=chunk.conteudo,
-                    metadata={
-                        "source": chunk.documento_origem,
-                        "chunk_index": chunk.indice,
-                        "hash": doc_hash
-                    }
-                )
-                documentos_langchain.append(doc)
-                novos_chunks.append(chunk)
-
-        # Se não há nada novo e o RAG já estava inicializado, apenas retorna estatísticas atuais
-        if not documentos_langchain:
-            if self.is_initialized:
-                if progress_callback:
-                    progress_callback(1.0, "Nenhuma alteração detectada.")
-                return self.get_estatisticas()
+            # Só adiciona no LangChain se NÃO estiver no banco
+            if incremental and doc_hash in hashes_no_banco:
+                docs_skipped += 1
             else:
-                raise ValueError("Nenhum documento novo para indexar.")
+                for chunk in chunks:
+                    doc = Document(
+                        page_content=chunk.conteudo,
+                        metadata={
+                            "source": chunk.documento_origem,
+                            "chunk_index": chunk.indice,
+                            "hash": doc_hash
+                        }
+                    )
+                    documentos_langchain.append(doc)
+
+        # Se não há documentos válidos (nem novos nem antigos), aí sim erro
+        if not todos_chunks:
+            raise ValueError("Nenhum documento válido para indexar.")
+
+        # Se não há nada NOVO para indexar
+        if not documentos_langchain:
+            # Garante que o vector store está conectado
+            self.vector_store = Chroma(
+                collection_name=self.config.collection_name,
+                embedding_function=self.embeddings,
+                client=self.chroma_client
+            )
+            
+            # Atualiza session state com os chunks carregados
+            st.session_state['rag_chunks'] = todos_chunks
+            st.session_state['vector_store'] = self.vector_store
+            st.session_state['rag_initialized'] = True
+            
+            if progress_callback:
+                progress_callback(1.0, "Documentos sincronizados com sucesso.")
+            
+            return {
+                'total_chunks': len(todos_chunks),
+                'documentos_indexados': len(set(c.documento_origem for c in todos_chunks)),
+                'documentos_pulpados': docs_skipped,
+                'novos_documentos': 0
+            }
         
         if progress_callback:
             progress_callback(0.9, "Atualizando embeddings...")
@@ -210,14 +241,8 @@ class RAGManager:
                 client=self.chroma_client
             )
         
-        # Atualiza session state (mantém chunks antigos se incremental)
-        if incremental and 'rag_chunks' in st.session_state:
-            # Filtra chunks antigos que ainda são válidos (estão na lista de documentos atual)
-            hashes_atuais = set(d[2] for d in documentos)
-            chunks_antigos_validos = [c for c in st.session_state['rag_chunks']] # Simplificação: por hora mantemos todos
-            st.session_state['rag_chunks'] = chunks_antigos_validos + novos_chunks
-        else:
-            st.session_state['rag_chunks'] = novos_chunks
+        # Atualiza session state com todos os chunks processados
+        st.session_state['rag_chunks'] = todos_chunks
 
         st.session_state['vector_store'] = self.vector_store
         st.session_state['rag_initialized'] = True
