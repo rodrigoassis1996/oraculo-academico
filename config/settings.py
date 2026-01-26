@@ -43,13 +43,13 @@ class RAGConfig:
     """Configurações do RAG."""
     embedding_model: str = "all-MiniLM-L6-v2"
     collection_name: str = "oraculo_docs"
-    top_k: int = 5
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
+    top_k: int = 10         # Aumentado para melhor cobertura (Fase 7)
+    chunk_size: int = 1200   # Levemente maior para manter contexto acadêmico (Fase 7)
+    chunk_overlap: int = 300 # Mais sobreposição para não perder conexões entre chunks (Fase 7)
 
 # Parâmetros padrão dos modelos
 DEFAULT_MODEL_PARAMS = {
-    'temperature': 0.7,
+    'temperature': 0.3, # Reduzido para respostas mais precisas e menos criativas (Fase 7)
     'max_tokens': None,
 }
 
@@ -64,24 +64,28 @@ CONFIG_MODELOS = {
 
 # Prompts centralizados
 PROMPTS = {
-    'RAG_SYSTEM': """Você é um assistente acadêmico especializado. 
-Responda à pergunta baseando-se EXCLUSIVAMENTE no contexto fornecido.
+    'RAG_SYSTEM': """Você é um assistente acadêmico de alto nível, especializado em análise documental profunda. 
 
-CONTEXTO DOS DOCUMENTOS:
+Sua tarefa consiste em sintetizar as informações dos documentos fornecidos para responder de forma abrangente e rigorosa.
+
+CONTEXTO DOS DOCUMENTOS (TRECHOS RECUPERADOS):
 {contexto}
 
-INSTRUÇÕES:
-1. Use apenas informações do contexto acima.
-2. Se não encontrar a informação, diga claramente.
-3. Cite a fonte (nome do documento) quando possível.
-4. Seja claro, preciso e acadêmico.""",
+DIRETRIZES DE RESPOSTA:
+1. **Fidelidade Estrita**: Baseie sua resposta EXCLUSIVAMENTE nos trechos fornecidos. Se a resposta não estiver lá, admita explicitamente.
+2. **Síntese Multi-Documento**: Se a informação estiver espalhada em múltiplos trechos ou arquivos, conecte-os de forma lógica e fluida.
+3. **Citação de Fontes**: SEMPRE cite o nome da fonte original (ex: [Fonte: arquivo.pdf]) ao final de cada parágrafo relevante ou afirmação importante.
+4. **Tom Acadêmico**: Mantenha um tom profissional, impessoal e analítico.
+5. **Estrutura**: Use bullet points ou sub-títulos se a resposta for complexa para facilitar a leitura.
+
+Responda agora com base no contexto acadêmico acima:""",
 
     'SIMPLE_SYSTEM': """Você é um assistente acadêmico.
 Documentos ({total_docs}):
 
 {documentos}
 
-Use as informações acima para responder de forma concisa e precisa."""
+Use as informações acima para responder de forma concisa, precisa e técnica."""
 }
 
 # Instâncias globais
