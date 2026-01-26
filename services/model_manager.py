@@ -5,7 +5,7 @@ import streamlit as st
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 
-from config.settings import CONFIG_MODELOS
+from config.settings import CONFIG_MODELOS, DEFAULT_MODEL_PARAMS, PROMPTS, RAG_CONFIG
 from services.rag_manager import RAGManager
 
 class ModelManager:
@@ -76,11 +76,11 @@ class ModelManager:
             progress_callback=progress_callback
         )
         
-        # Cria o modelo LLM
+        # Cria o modelo LLM usando parâmetros padronizados
         llm = config['chat'](
             model=modelo,
             api_key=api_key,
-            temperature=0.7
+            **DEFAULT_MODEL_PARAMS
         )
         
         st.session_state['llm'] = llm
@@ -102,18 +102,7 @@ class ModelManager:
         if not contexto:
             contexto = "Nenhum contexto relevante encontrado nos documentos."
         
-        system_message = '''Você é um assistente acadêmico especializado. 
-    Responda à pergunta baseando-se EXCLUSIVAMENTE no contexto fornecido.
-
-    CONTEXTO DOS DOCUMENTOS:
-    {contexto}
-
-    INSTRUÇÕES:
-    1. Use apenas informações do contexto acima.
-    2. Se não encontrar a informação, diga claramente.
-    3. Cite a fonte quando possível.
-    4. Seja claro, preciso e acadêmico.
-    '''
+        system_message = PROMPTS['RAG_SYSTEM']
         
         template = ChatPromptTemplate.from_messages([
             ('system', system_message.format(contexto=contexto)),
@@ -146,13 +135,10 @@ class ModelManager:
         if not api_key:
             raise ValueError(f"API key não fornecida para {provedor}.")
         
-        system_message = '''Você é um assistente acadêmico.
-    Documentos ({total_docs}):
-
-    {documentos}
-
-    Use as informações acima para responder.
-    '''.format(total_docs=total_documentos, documentos=documentos_conteudo)
+        system_message = PROMPTS['SIMPLE_SYSTEM'].format(
+            total_docs=total_documentos, 
+            documentos=documentos_conteudo
+        )
         
         template = ChatPromptTemplate.from_messages([
             ('system', system_message),
@@ -163,7 +149,7 @@ class ModelManager:
         chat = config['chat'](
             model=modelo,
             api_key=api_key,
-            temperature=0.7
+            **DEFAULT_MODEL_PARAMS
         )
         
         chain = template | chat

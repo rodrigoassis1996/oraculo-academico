@@ -101,7 +101,7 @@ def render_botoes_acao(upload_manager: UploadManager, model_manager: ModelManage
             use_container_width=True
         ):
             # Prepara documentos
-            documentos = [(doc.nome, doc.conteudo) for doc in upload_manager.documentos]
+            documentos = [(doc.nome, doc.get_conteudo()) for doc in upload_manager.documentos]
             
             if usar_rag:
                 # Modo RAG
@@ -138,6 +138,23 @@ def render_botoes_acao(upload_manager: UploadManager, model_manager: ModelManage
             upload_manager.limpar_documentos()
             model_manager.reset_completo()
             st.rerun()
+
+    # Zona de Perigo - Limpeza física
+    with st.sidebar:
+        st.divider()
+        with st.expander("⚠️ Configurações Avançadas"):
+            st.warning("A purga deleta fisicamente o banco de vetores e o cache de texto do disco.")
+            if st.button("🔥 Purgar Dados Locais", use_container_width=True):
+                # Executa purga nos dois managers e reseta sessão
+                upload_manager.purgar_fisico()
+                sucesso, msg = model_manager.rag_manager.purgar_fisicamente()
+                if sucesso:
+                    model_manager.reset_completo()
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
 
 def render_status_documento():
     """Status na sidebar."""

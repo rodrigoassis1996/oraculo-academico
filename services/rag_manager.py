@@ -2,6 +2,8 @@
 """Gerenciador RAG - Embeddings, Vector Store e Retrieval."""
 
 import streamlit as st
+import os
+import shutil
 from typing import List, Optional
 from dataclasses import dataclass
 
@@ -30,7 +32,8 @@ class RAGManager:
     """
 
     def __init__(self, config: RAGConfig = None):
-        self.config = config or RAGConfig()
+        from config.settings import RAG_CONFIG
+        self.config = config or RAG_CONFIG
         self.text_processor = TextProcessor(
             ChunkConfig(
                 chunk_size=self.config.chunk_size,
@@ -40,6 +43,27 @@ class RAGManager:
         self._init_session_state()
         self._init_embeddings()
         self._init_vector_store()
+        self._lifecycle_purge()
+
+    def _lifecycle_purge(self):
+        """Remove arquivos temporários e índices com mais de 48h."""
+        import time
+        current_time = time.time()
+        max_age = 48 * 3600  # 48 horas em segundos
+        
+        base_tmp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp'))
+        content_dir = os.path.join(base_tmp, 'content')
+        
+        if os.path.exists(content_dir):
+            for f in os.listdir(content_dir):
+                file_path = os.path.join(content_dir, f)
+                if os.path.isfile(file_path):
+                    if current_time - os.path.getmtime(file_path) > max_age:
+                        try:
+                            os.remove(file_path)
+                        except:
+                            pass
+
 
     def _init_session_state(self):
         """Inicializa session state."""
@@ -52,21 +76,33 @@ class RAGManager:
         """Inicializa modelo de embeddings."""
         # Cache do modelo para não recarregar
         if 'embedding_model' not in st.session_state:
+            # Bug fix: 'Cannot copy out of meta tensor' em versões recentes de torch/transformers
+            # Forçamos o carregamento direto no CPU sem usar meta tensors se possível
             st.session_state['embedding_model'] = HuggingFaceEmbeddings(
                 model_name=self.config.embedding_model,
-                model_kwargs={'device': 'cpu'},
+                model_kwargs={
+                    'device': 'cpu',
+                    'trust_remote_code': True
+                },
                 encode_kwargs={'normalize_embeddings': True}
             )
         self.embeddings = st.session_state['embedding_model']
 
     def _init_vector_store(self):
-        """Inicializa vector store."""
-        # Cliente ChromaDB em memória (efêmero)
+        """Inicializa vector store persistente."""
+        persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp', 'vector_db'))
+        
+        # Cliente ChromaDB persistente
         if 'chroma_client' not in st.session_state:
-            st.session_state['chroma_client'] = chromadb.EphemeralClient(
-                settings=ChromaSettings(anonymized_telemetry=False)
+            st.session_state['chroma_client'] = chromadb.PersistentClient(
+                path=persist_dir,
+                settings=ChromaSettings(
+                    anonymized_telemetry=False,
+                    allow_reset=True  # Permite resetar o banco programaticamente
+                )
             )
         self.chroma_client = st.session_state['chroma_client']
+
         
         # Vector store
         if 'vector_store' not in st.session_state:
@@ -251,3 +287,28 @@ class RAGManager:
         """Retorna estatísticas do índice atual."""
         chunks = st.session_state.get('rag_chunks', [])
         return self.text_processor.get_estatisticas(chunks)
+
+    def purgar_fisicamente(self):
+        """Deleta fisicamente todas as pastas de dados locais (usando reset para o Chroma)."""
+        self.limpar_indice()
+        
+        # 1. Reset do ChromaDB (mais seguro que rm -rf no Windows com o arquivo aberto)
+        try:
+            self.chroma_client.reset()
+        except Exception as e:
+            print(f"Aviso: Erro ao resetar Chroma: {e}")
+
+        # 2. Limpeza do cache de texto em .tmp/content/
+        base_tmp = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp'))
+        content_dir = os.path.join(base_tmp, 'content')
+        
+        if os.path.exists(content_dir):
+            try:
+                shutil.rmtree(content_dir)
+                os.makedirs(content_dir, exist_ok=True)
+                return True, "✅ Dados locais purgados com sucesso."
+            except Exception as e:
+                return False, f"❌ Erro ao purgar cache de texto: {str(e)}"
+        
+        return True, "✅ Purga concluída."
+

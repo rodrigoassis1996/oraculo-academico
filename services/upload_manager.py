@@ -2,7 +2,9 @@
 """Gerenciador de upload com suporte a múltiplos documentos."""
 
 import os
+import sys
 import tempfile
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from time import sleep
@@ -24,10 +26,17 @@ class DocumentoCarregado:
     id: str
     nome: str
     tipo: TipoArquivo
-    conteudo: str
+    caminho_cache: str  # Caminho para o arquivo de texto em .tmp/
     tamanho_bytes: int
     tamanho_chars: int
     data_upload: datetime = field(default_factory=datetime.now)
+
+    def get_conteudo(self) -> str:
+        """Lê o conteúdo do arquivo de cache."""
+        if not os.path.exists(self.caminho_cache):
+            return ""
+        with open(self.caminho_cache, 'r', encoding='utf-8') as f:
+            return f.read()
 
     @property
     def tamanho_formatado(self) -> str:
@@ -46,6 +55,11 @@ class UploadManager:
 
     def __init__(self):
         self.config = UPLOAD_CONFIG
+        self.tmp_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp'))
+        self.content_dir = os.path.join(self.tmp_dir, 'content')
+        
+        # Cria diretórios necessários
+        os.makedirs(self.content_dir, exist_ok=True)
         self._init_session_state()
 
     def _init_session_state(self) -> None:
@@ -65,13 +79,13 @@ class UploadManager:
 
     @property
     def conteudo_combinado(self) -> str:
-        """Combina conteúdo de todos os documentos."""
+        """Combina conteúdo de todos os documentos (lendo do cache)."""
         if not self.documentos:
             return ""
         
         partes = []
         for doc in self.documentos:
-            partes.append(f"=== DOCUMENTO: {doc.nome} ({doc.tipo.value}) ===\n{doc.conteudo}")
+            partes.append(f"=== DOCUMENTO: {doc.nome} ({doc.tipo.value}) ===\n{doc.get_conteudo()}")
         
         return "\n\n".join(partes)
 
@@ -116,47 +130,44 @@ class UploadManager:
 
     # ==================== LOADERS ====================
 
-    def _carregar_site(self, url: str) -> str:
-        """Carrega conteúdo de URL."""
-        for tentativa in range(5):
-            try:
-                os.environ['USER_AGENT'] = UserAgent().random
-                loader = WebBaseLoader(url, raise_for_status=True)
-                docs = loader.load()
-                return '\n\n'.join([doc.page_content for doc in docs])
-            except Exception as e:
-                if tentativa < 4:
-                    sleep(3)
-                else:
-                    raise RuntimeError(f"Falha ao carregar site: {e}")
-        return ""
+    def _executar_ingestao(self, args: List[str]) -> str:
+        """Executa o script de ingestão e retorna o resultado."""
+        import subprocess
+        
+        script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'execution', 'document_ingestion.py'))
+        cmd = [sys.executable, script_path] + args
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', check=True)
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            err_msg = e.stderr or e.stdout or "Nenhuma mensagem de erro capturada."
+            raise RuntimeError(f"Erro no script de ingestão: {err_msg.strip()}")
 
-    def _carregar_com_temp_file(self, arquivo, suffix: str, loader_class) -> str:
-        """Carrega arquivo via arquivo temporário."""
+    def _carregar_site(self, url: str) -> str:
+        """Carrega conteúdo de URL via script de execução."""
+        return self._executar_ingestao(["--url", url])
+
+    def _carregar_com_temp_file(self, arquivo, suffix: str, loader_class=None) -> str:
+        """Carrega arquivo via script de execução usando arquivo temporário."""
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
             temp.write(arquivo.read())
             temp_path = temp.name
         
         try:
-            loader = loader_class(temp_path)
-            docs = loader.load()
-            return '\n\n'.join([doc.page_content for doc in docs])
+            return self._executar_ingestao(["--file", temp_path, "--suffix", suffix])
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
     def _carregar_docx(self, arquivo) -> str:
-        """Carrega arquivo DOCX."""
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp:
-            temp.write(arquivo.read())
-            temp_path = temp.name
-        
-        try:
-            conteudo = docx2txt.process(temp_path)
-            return conteudo
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+        """Carrega arquivo DOCX via script de execução."""
+        return self._carregar_com_temp_file(arquivo, '.docx')
+
+    def _gerar_hash(self, texto: str) -> str:
+        """Gera hash MD5 do conteúdo."""
+        return hashlib.md5(texto.encode('utf-8')).hexdigest()
+
 
     # ==================== MÉTODOS PRINCIPAIS ====================
 
@@ -198,26 +209,41 @@ class UploadManager:
             if not conteudo or len(conteudo.strip()) < 10:
                 return False, "⚠️ Documento sem conteúdo extraível."
             
+            # Smart Persistence: Gera hash para deduplicação
+            content_hash = self._gerar_hash(conteudo)
+            cache_id = f"{content_hash}.txt"
+            caminho_cache = os.path.join(self.content_dir, cache_id)
+            
+            ja_existia = os.path.exists(caminho_cache)
+            if not ja_existia:
+                with open(caminho_cache, 'w', encoding='utf-8') as f:
+                    f.write(conteudo)
+
             # Cria objeto do documento
             doc = DocumentoCarregado(
-                id=f"{nome_doc}_{datetime.now().timestamp()}",
+                id=f"{content_hash}_{datetime.now().timestamp()}", # ID único para a sessão
                 nome=nome_doc,
                 tipo=tipo,
-                conteudo=conteudo,
+                caminho_cache=caminho_cache,
                 tamanho_bytes=tamanho_bytes,
                 tamanho_chars=len(conteudo)
             )
             
+            # Evita duplicatas exatas na lista da sessão atual
+            if any(d.caminho_cache == caminho_cache for d in self.documentos):
+                return True, f"💡 '{nome_doc}' já está na lista (conteúdo idêntico detectado)."
+
             # Adiciona à lista
             st.session_state['documentos'].append(doc)
             
-            return True, f"✅ '{nome_doc}' carregado ({doc.tamanho_formatado}, {len(conteudo):,} chars)"
+            status_msg = "carregado" if not ja_existia else "reutilizado do cache"
+            return True, f"✅ '{nome_doc}' {status_msg} ({doc.tamanho_formatado}, {len(conteudo):,} chars)"
             
         except Exception as e:
             return False, f"❌ Erro ao carregar: {str(e)}"
 
     def remover_documento(self, doc_id: str) -> bool:
-        """Remove documento da lista pelo ID."""
+        """Remove documento da lista da sessão (mantém cache físico para reuso)."""
         docs = st.session_state['documentos']
         for i, doc in enumerate(docs):
             if doc.id == doc_id:
@@ -226,5 +252,13 @@ class UploadManager:
         return False
 
     def limpar_documentos(self) -> None:
-        """Remove todos os documentos."""
+        """Limpa lista de documentos da sessão atual (mantém arquivos no disco)."""
         st.session_state['documentos'] = []
+    
+    def purgar_fisico(self) -> None:
+        """Remove fisicamente todos os arquivos de cache do disco."""
+        import shutil
+        if os.path.exists(self.content_dir):
+            shutil.rmtree(self.content_dir)
+            os.makedirs(self.content_dir, exist_ok=True)
+        self.limpar_documentos()
