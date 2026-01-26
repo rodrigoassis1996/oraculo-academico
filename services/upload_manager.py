@@ -27,6 +27,7 @@ class DocumentoCarregado:
     nome: str
     tipo: TipoArquivo
     caminho_cache: str  # Caminho para o arquivo de texto em .tmp/
+    hash: str          # Hash MD5 do conteúdo
     tamanho_bytes: int
     tamanho_chars: int
     data_upload: datetime = field(default_factory=datetime.now)
@@ -225,6 +226,7 @@ class UploadManager:
                 nome=nome_doc,
                 tipo=tipo,
                 caminho_cache=caminho_cache,
+                hash=content_hash,
                 tamanho_bytes=tamanho_bytes,
                 tamanho_chars=len(conteudo)
             )

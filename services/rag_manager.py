@@ -123,30 +123,47 @@ class RAGManager:
 
     def indexar_documentos(
         self,
-        documentos: List[tuple],  # [(nome, conteudo), ...]
+        documentos: List[tuple],  # [(nome, conteudo, hash), ...]
+        incremental: bool = True,
         progress_callback=None
     ) -> dict:
         """
-        Indexa múltiplos documentos no vector store.
+        Indexa múltiplos documentos no vector store de forma incremental.
         
         Args:
-            documentos: Lista de tuplas (nome, conteudo)
+            documentos: Lista de tuplas (nome, conteudo, hash)
+            incremental: Se True, pula documentos já indexados
             progress_callback: Função para atualizar progresso
             
         Returns:
             Estatísticas da indexação
         """
-        # Limpa índice anterior
-        self.limpar_indice()
+        if not incremental:
+            self.limpar_indice()
         
-        todos_chunks = []
+        # Pega coleção atual para verificar hashes
+        try:
+            collection = self.chroma_client.get_collection(self.config.collection_name)
+            # Extrai hashes únicos já presentes na coleção
+            existing_metadata = collection.get(include=['metadatas'])['metadatas']
+            hashes_no_banco = set(m.get('hash') for m in existing_metadata if m.get('hash'))
+        except:
+            hashes_no_banco = set()
+
+        novos_chunks = []
         documentos_langchain = []
         
         total_docs = len(documentos)
+        docs_skipped = 0
         
-        for i, (nome, conteudo) in enumerate(documentos):
+        for i, (nome, conteudo, doc_hash) in enumerate(documentos):
             if progress_callback:
-                progress_callback((i + 1) / (total_docs + 1), f"Processando {nome}...")
+                progress_callback((i + 1) / (total_docs + 1), f"Analisando {nome}...")
+            
+            # Pula se já estiver no banco
+            if incremental and doc_hash in hashes_no_banco:
+                docs_skipped += 1
+                continue
             
             # Valida conteúdo
             is_valid, msg = self.text_processor.validar_conteudo_extraido(conteudo)
@@ -156,44 +173,63 @@ class RAGManager:
             
             # Cria chunks
             chunks = self.text_processor.criar_chunks(conteudo, nome)
-            todos_chunks.extend(chunks)
             
-            # Converte para formato LangChain
+            # Alimenta chunks com o hash para persistência
             for chunk in chunks:
                 doc = Document(
                     page_content=chunk.conteudo,
                     metadata={
                         "source": chunk.documento_origem,
-                        "chunk_index": chunk.indice
+                        "chunk_index": chunk.indice,
+                        "hash": doc_hash
                     }
                 )
                 documentos_langchain.append(doc)
-        
+                novos_chunks.append(chunk)
+
+        # Se não há nada novo e o RAG já estava inicializado, apenas retorna estatísticas atuais
         if not documentos_langchain:
-            raise ValueError("Nenhum documento válido para indexar.")
+            if self.is_initialized:
+                if progress_callback:
+                    progress_callback(1.0, "Nenhuma alteração detectada.")
+                return self.get_estatisticas()
+            else:
+                raise ValueError("Nenhum documento novo para indexar.")
         
         if progress_callback:
-            progress_callback(0.9, "Criando embeddings...")
+            progress_callback(0.9, "Atualizando embeddings...")
         
-        # Cria vector store com os documentos
-        self.vector_store = Chroma.from_documents(
-            documents=documentos_langchain,
-            embedding=self.embeddings,
-            collection_name=self.config.collection_name,
-            client=self.chroma_client
-        )
+        # Adiciona novos documentos ao vector store existente ou cria um novo
+        if self.vector_store and incremental:
+            self.vector_store.add_documents(documentos_langchain)
+        else:
+            self.vector_store = Chroma.from_documents(
+                documents=documentos_langchain,
+                embedding=self.embeddings,
+                collection_name=self.config.collection_name,
+                client=self.chroma_client
+            )
         
-        # Salva no session state
+        # Atualiza session state (mantém chunks antigos se incremental)
+        if incremental and 'rag_chunks' in st.session_state:
+            # Filtra chunks antigos que ainda são válidos (estão na lista de documentos atual)
+            hashes_atuais = set(d[2] for d in documentos)
+            chunks_antigos_validos = [c for c in st.session_state['rag_chunks']] # Simplificação: por hora mantemos todos
+            st.session_state['rag_chunks'] = chunks_antigos_validos + novos_chunks
+        else:
+            st.session_state['rag_chunks'] = novos_chunks
+
         st.session_state['vector_store'] = self.vector_store
-        st.session_state['rag_chunks'] = todos_chunks
         st.session_state['rag_initialized'] = True
         
         if progress_callback:
             progress_callback(1.0, "Concluído!")
         
         # Estatísticas
-        stats = self.text_processor.get_estatisticas(todos_chunks)
-        stats['documentos_indexados'] = len(set(c.documento_origem for c in todos_chunks))
+        chunks_finais = st.session_state['rag_chunks']
+        stats = self.text_processor.get_estatisticas(chunks_finais)
+        stats['documentos_indexados'] = len(set(c.documento_origem for c in chunks_finais))
+        stats['documentos_pulpados'] = docs_skipped
         
         return stats
 

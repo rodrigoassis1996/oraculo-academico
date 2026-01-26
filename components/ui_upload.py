@@ -100,8 +100,8 @@ def render_botoes_acao(upload_manager: UploadManager, model_manager: ModelManage
             type="primary",
             use_container_width=True
         ):
-            # Prepara documentos
-            documentos = [(doc.nome, doc.get_conteudo()) for doc in upload_manager.documentos]
+            # Prepara documentos com hash para indexação incremental
+            documentos = [(doc.nome, doc.get_conteudo(), doc.hash) for doc in upload_manager.documentos]
             
             if usar_rag:
                 # Modo RAG
