@@ -104,8 +104,16 @@ class ModelManager:
         
         system_message = PROMPTS['RAG_SYSTEM']
         
+        # Recupera metadados para o prompt customizado do usuário
+        docs_atuais = st.session_state.get('documentos', [])
+        nomes_docs = ", ".join([d.nome for d in docs_atuais])
+        
         template = ChatPromptTemplate.from_messages([
-            ('system', system_message.format(contexto=contexto)),
+            ('system', system_message.format(
+                contexto=contexto,
+                total_docs=len(docs_atuais),
+                documentos=nomes_docs
+            )),
             ('placeholder', '{chat_history}'),
             ('user', '{input}')
         ])
