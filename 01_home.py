@@ -13,13 +13,29 @@ st.set_page_config(
 # --- CSS: Ajustes finos de layout ---
 st.markdown("""
 <style>
-/* Remove padding do topo */
+/* Layout otimizado - previne scroll global mantendo elementos visíveis */
 .block-container {
-    padding-top: 2rem;
-    padding-bottom: 0rem;
+    padding-top: 2rem;  /* Aumentado para evitar corte do título */
+    padding-bottom: 2rem;
 }
+
 /* Esconde footer padrão */
 footer {visibility: hidden;}
+
+/* Previne scroll global - permite apenas scroll interno do chat */
+section.main > div {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+section.main {
+    overflow: hidden;
+}
+
+/* Ajuste para o container do Streamlit */
+.stChatInput {
+    padding-bottom: 20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,8 +87,8 @@ with tab_chat:
             st.caption(f"🧠 RAG ativo: {stats.get('total_chunks', 0)} chunks")
 
         # --- CONTAINER DE SCROLL ---
-        chat_container = st.container(height=550, border=False)
-        
+        chat_container = st.container(height=350, border=False)
+
         # 1. Renderiza histórico DENTRO do container de scroll
         with chat_container:
             for msg in model_manager.mensagens:
@@ -82,30 +98,29 @@ with tab_chat:
             # O st.container(height=...) rola automaticamente para o final
             pass
 
-        # 2. Input do Usuário (FIXO NO RODAPÉ DO NAVEGADOR)
-        if prompt := st.chat_input('Fale com o Oráculo Acadêmico'):
+# 2. Input do Usuário (Nível raiz para o Streamlit fixar automaticamente)
+if model_manager.chain is not None:
+    if prompt := st.chat_input('Fale com o Oráculo Acadêmico'):
 
-            model_manager.adicionar_mensagem('human', prompt)
+        model_manager.adicionar_mensagem('human', prompt)
 
-            # Reabrimos o container para escrever a nova interação lá dentro
-            with chat_container:
-                # Mostra msg usuário
-                with st.chat_message('human'):
-                    st.markdown(prompt)
+        # Mostra a mensagem e a resposta
+        # Nota: O st.rerun() no final garantirá que tudo seja renderizado nos lugares certos
+        with chat_container:
+            with st.chat_message('human'):
+                st.markdown(prompt)
 
-                # Gera e mostra a resposta da IA
-                with st.chat_message('ai'):
-                    if usar_rag:
-                        resposta = st.write_stream(model_manager.gerar_resposta_rag(prompt))
-                    else:
-                        resposta = st.write_stream(
-                            model_manager.chain.stream({
-                                'input': prompt,
-                                'chat_history': model_manager.get_historico_langchain()
-                            })
-                        )
-            
-            # Salva resposta
-            model_manager.adicionar_mensagem('ai', resposta)
-
-            st.rerun()
+            with st.chat_message('ai'):
+                usar_rag = st.session_state.get('usar_rag', False)
+                if usar_rag:
+                    resposta = st.write_stream(model_manager.gerar_resposta_rag(prompt))
+                else:
+                    resposta = st.write_stream(
+                        model_manager.chain.stream({
+                            'input': prompt,
+                            'chat_history': model_manager.get_historico_langchain()
+                        })
+                    )
+        
+        model_manager.adicionar_mensagem('ai', resposta)
+        st.rerun()
