@@ -6,12 +6,20 @@ Independente do Streamlit e da camada de serviços.
 """
 
 import os
-import argparse
-import tempfile
 import sys
 import io
+import argparse
+import tempfile
 from typing import Optional, List
 from time import sleep
+from dotenv import load_dotenv
+load_dotenv()
+
+from fake_useragent import UserAgent
+
+# Set USER_AGENT before any langchain imports to avoid warning
+if not os.getenv("USER_AGENT"):
+    os.environ["USER_AGENT"] = UserAgent().random
 
 # Força o stdout a usar UTF-8 para evitar erros de encoding no Windows
 if sys.stdout.encoding != 'utf-8':
@@ -25,7 +33,6 @@ from langchain_community.document_loaders import (
     TextLoader
 )
 import docx2txt
-from fake_useragent import UserAgent
 
 def extract_from_url(url: str) -> str:
     """Extrai texto de uma URL com retry e fake user agent."""

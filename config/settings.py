@@ -11,6 +11,8 @@ from langchain_openai import ChatOpenAI
 # from langchain_groq import ChatGroq  # Descomente quando usar
 
 load_dotenv()
+if not os.getenv("USER_AGENT"):
+    os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
 class TipoArquivo(Enum):
     """Tipos de arquivo suportados pelo sistema."""
