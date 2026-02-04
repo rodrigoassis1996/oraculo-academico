@@ -56,7 +56,9 @@ with st.sidebar:
     render_upload_widget(upload_manager, model_manager)
 
     st.divider()
+    st.caption("🤖 **Agente Ativo:** Orquestrador")
     if st.button('🧹 Limpar Histórico', use_container_width=True):
+
         model_manager.limpar_memoria()
         st.rerun()
 
@@ -84,7 +86,9 @@ with tab_chat:
         
         if usar_rag and st.session_state.get('rag_stats'):
             stats = st.session_state['rag_stats']
+            st.info("🎓 **Orquestrador Acadêmico:** Analisando documentos para planejamento.")
             st.caption(f"🧠 RAG ativo: {stats.get('total_chunks', 0)} chunks")
+
 
         # --- CONTAINER DE SCROLL ---
         chat_container = st.container(height=350, border=False)

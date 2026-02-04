@@ -7,13 +7,17 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from config.settings import CONFIG_MODELOS, DEFAULT_MODEL_PARAMS, PROMPTS, RAG_CONFIG
 from services.rag_manager import RAGManager
+from agents.orchestrator import OrchestratorAgent
 
 class ModelManager:
+
     """Gerencia criação de chains e memória de conversação com RAG."""
 
     def __init__(self):
         self._init_session_state()
         self.rag_manager = RAGManager()
+        self.orchestrator = OrchestratorAgent(self)
+
 
     def _init_session_state(self) -> None:
         """Inicializa keys no session_state."""
@@ -91,12 +95,18 @@ class ModelManager:
         return stats
 
     def gerar_resposta_rag(self, pergunta: str):
-        """Gera resposta usando RAG com streaming."""
+        """Gera resposta usando RAG ou Agente Orquestrador com streaming."""
         llm = st.session_state.get('llm')
         if not llm:
             raise ValueError("LLM não inicializado.")
         
+        # Se houver documentos, usamos a lógica do Orquestrador
+        if st.session_state.get('documentos'):
+            yield from self.orchestrator.planejar_documento(pergunta)
+            return
+
         # Recupera contexto relevante
+
         contexto = self.rag_manager.get_contexto_para_prompt(pergunta)
         
         if not contexto:

@@ -55,6 +55,13 @@ DEFAULT_MODEL_PARAMS = {
     'max_tokens': None,
 }
 
+# Parâmetros específicos para agentes acadêmicos (Rigor máximo)
+AGENT_MODEL_PARAMS = {
+    'temperature': 0.15,
+    'max_tokens': None,
+}
+
+
 # Configuração de modelos LLM
 CONFIG_MODELOS = {
     'OpenAI': {
