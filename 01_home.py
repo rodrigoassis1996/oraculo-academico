@@ -48,6 +48,13 @@ if 'model_manager' not in st.session_state:
 upload_manager = st.session_state['upload_manager']
 model_manager = st.session_state['model_manager']
 
+# Mapeamento de nomes de agentes para exibição
+AGENT_LABELS = {
+    'ORCHESTRATOR': 'Maestro (Triagem)',
+    'ESTRUTURADOR': 'Agente Estruturador',
+    'QA': 'Agente de Pergunta e Resposta'
+}
+
 # ===================== SIDEBAR =====================
 with st.sidebar:
     st.header('⚙️ Configurações')
@@ -56,7 +63,9 @@ with st.sidebar:
     render_upload_widget(upload_manager, model_manager)
 
     st.divider()
-    st.caption("🤖 **Agente Ativo:** Orquestrador")
+    agente_ativo = st.session_state.get('agente_ativo', 'ORCHESTRATOR')
+    label_agente = AGENT_LABELS.get(agente_ativo, agente_ativo)
+    st.caption(f"🤖 **Agente Ativo:** {label_agente}")
     if st.button('🧹 Limpar Histórico', use_container_width=True):
 
         model_manager.limpar_memoria()
@@ -86,7 +95,9 @@ with tab_chat:
         
         if usar_rag and st.session_state.get('rag_stats'):
             stats = st.session_state['rag_stats']
-            st.info("🎓 **Orquestrador Acadêmico:** Analisando documentos para planejamento.")
+            agente_ativo = st.session_state.get('agente_ativo', 'ORCHESTRATOR')
+            label_agente = AGENT_LABELS.get(agente_ativo, agente_ativo)
+            st.info(f"🎓 **{label_agente}:** Processando solicitação acadêmica.")
             st.caption(f"🧠 RAG ativo: {stats.get('total_chunks', 0)} chunks")
 
 
@@ -105,26 +116,31 @@ with tab_chat:
 # 2. Input do Usuário (Nível raiz para o Streamlit fixar automaticamente)
 if model_manager.chain is not None:
     if prompt := st.chat_input('Fale com o Oráculo Acadêmico'):
+        # 1. Triagem Imediata para atualizar a UI
+        if st.session_state.get('usar_rag'):
+             model_manager.orchestrator.classificar_e_atualizar_estado(prompt)
 
+        # 2. Adiciona ao histórico e marca para execução reativa
         model_manager.adicionar_mensagem('human', prompt)
-
-        # Mostra a mensagem e a resposta
-        # Nota: O st.rerun() no final garantirá que tudo seja renderizado nos lugares certos
-        with chat_container:
-            with st.chat_message('human'):
-                st.markdown(prompt)
-
-            with st.chat_message('ai'):
-                usar_rag = st.session_state.get('usar_rag', False)
-                if usar_rag:
-                    resposta = st.write_stream(model_manager.gerar_resposta_rag(prompt))
-                else:
-                    resposta = st.write_stream(
-                        model_manager.chain.stream({
-                            'input': prompt,
-                            'chat_history': model_manager.get_historico_langchain()
-                        })
-                    )
-        
-        model_manager.adicionar_mensagem('ai', resposta)
+        st.session_state['prompt_pendente'] = prompt
         st.rerun()
+
+# 3. Execução de Prompt Pendente (para garantir que a UI rodou com o novo estado)
+if 'prompt_pendente' in st.session_state:
+    prompt = st.session_state.pop('prompt_pendente')
+    with chat_container:
+        with st.chat_message('ai'):
+            usar_rag = st.session_state.get('usar_rag', False)
+            if usar_rag:
+                # O state já mudou, o stream usará o agente certo
+                resposta = st.write_stream(model_manager.gerar_resposta_rag(prompt))
+            else:
+                resposta = st.write_stream(
+                    model_manager.chain.stream({
+                        'input': prompt,
+                        'chat_history': model_manager.get_historico_langchain()
+                    })
+                )
+    
+    model_manager.adicionar_mensagem('ai', resposta)
+    st.rerun()

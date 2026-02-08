@@ -312,6 +312,35 @@ class RAGManager:
         
         return docs
 
+    def buscar_em_todos_os_documentos(
+        self, 
+        query: str, 
+        k_por_doc: int = 3
+    ) -> List[Document]:
+        """
+        Busca chunks mais relevantes em CADA um dos documentos indexados.
+        Garante cobertura total do corpus.
+        """
+        if not self.is_initialized or self.vector_store is None:
+            return []
+            
+        # Pega a lista de todos os fontes (sources) unicos
+        collection = self.chroma_client.get_collection(self.config.collection_name)
+        metadata = collection.get(include=['metadatas'])['metadatas']
+        sources = list(set(m.get('source') for m in metadata if m.get('source')))
+        
+        documentos_finais = []
+        for source in sources:
+            # Busca filtrando por source
+            docs_doc = self.vector_store.similarity_search(
+                query, 
+                k=k_por_doc, 
+                filter={"source": source}
+            )
+            documentos_finais.extend(docs_doc)
+            
+        return documentos_finais
+
     def buscar_com_scores(
         self, 
         query: str, 
@@ -332,17 +361,22 @@ class RAGManager:
         
         return docs_with_scores
 
-    def get_contexto_para_prompt(self, query: str, top_k: int = None) -> str:
+    def get_contexto_para_prompt(self, query: str, top_k: int = None, cobertura_total: bool = False) -> str:
         """
         Retorna contexto formatado para incluir no prompt.
         
         Args:
             query: Pergunta do usuário
+            top_k: Número de chunks a retornar (se cobertura_total=False)
+            cobertura_total: Se True, busca em todos os documentos individualmente.
             
         Returns:
             String formatada com os chunks relevantes
         """
-        docs = self.buscar_relevantes(query, top_k)
+        if cobertura_total:
+            docs = self.buscar_em_todos_os_documentos(query)
+        else:
+            docs = self.buscar_relevantes(query, top_k)
         
         if not docs:
             return ""

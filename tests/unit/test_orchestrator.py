@@ -20,30 +20,22 @@ def test_llm_initialization_validation(mock_mm):
         agent = OrchestratorAgent(mock_mm)
         assert agent.llm is None
         with pytest.raises(ValueError, match="LLM não inicializado no ModelManager"):
-            # A execução deve falhar logo no início ao acessar self.llm no planejar_documento
-            next(agent.planejar_documento("objetivo"))
+            # A execução deve falhar logo no início ao acessar self.llm no route_request
+            next(agent.route_request("objetivo"))
 
     # Cenário 2: LLM Presente
     mock_llm = MagicMock()
     with patch('streamlit.session_state', {'llm': mock_llm, 'documentos': []}):
         agent = OrchestratorAgent(mock_mm)
         assert agent.llm == mock_llm
-        # Verifica se o planejar_documento acessa o llm (ele deve tentar criar o chain)
-        with patch.object(OrchestratorAgent, 'get_prompt_template', return_value=MagicMock()):
-             # Basta verificar que não lança ValueError de imediato
+        # Verifica se o route_request acessa o llm
+        with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_prompt:
+             mock_prompt.return_value = MagicMock()
              try:
-                 gen = agent.planejar_documento("objetivo")
+                 gen = agent.route_request("objetivo")
                  next(gen)
              except StopIteration:
-                 pass # O gerador pode estar vazio no mock
+                 pass 
              except Exception as e:
                  if isinstance(e, ValueError) and "LLM não inicializado" in str(e):
                      pytest.fail("Lançou ValueError mesmo com LLM presente")
-
-
-def test_get_prompt_template_persona(mock_mm):
-    """Verifica se a persona correta é carregada no template."""
-    with patch('streamlit.session_state', {'documentos': []}):
-        agent = OrchestratorAgent(mock_mm)
-        template = agent.get_prompt_template()
-        assert "Coordenador de Pesquisa" in template.messages[0].prompt.template
