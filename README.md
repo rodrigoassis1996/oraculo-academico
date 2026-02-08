@@ -6,32 +6,49 @@ O **Oráculo Acadêmico** evoluiu de um simples chat RAG para um ecossistema de 
 
 ## ✨ Diferenciais Tecnológicos
 
-- **Orquestração Multiagentes**: Arquitetura baseada em papéis técnicos onde um **Agente Orquestrador** planeja a estrutura do documento antes da execução.
+- **Orquestração Multiagentes**: Arquitetura baseada em papéis técnicos onde um **Agente Maestro** planeja a estrutura do documento antes da execução.
 - **Experiência Zero-Click**: Detecção automática de tipo de arquivo e inicialização silenciosa do RAG ao arrastar documentos.
-- **Respostas Humanizadas**: Interface focada no usuário, ocultando termos técnicos do RAG (trechos/chunks) para uma comunicação natural.
-- **RAG com Cobertura Total**: Algoritmo de recuperação per-documento que garante a análise de 100% do corpus subido, evitando lacunas de informação.
-- **Visibilidade Reativa**: Interface Streamlit que reflete em tempo real qual agente está processando a solicitação (Maestro, Estruturador ou QA).
+- **Respostas Humanizadas**: Interface focada no usuário, ocultando termos técnicos do RAG para uma comunicação natural.
+- **RAG com Cobertura Total**: Algoritmo de recuperação per-documento que garante a análise de 100% do corpus subido, realizando buscas exaustivas em cada arquivo individualmente.
+- **Sincronização Inteligente**: Indexação incremental com base em hashes, garantindo que apenas novos conteúdos sejam processados, economizando tokens e tempo.
 
 ---
 
-## 🤖 Sistema de Agentes
+## 🤖 Fluxo de Inteligência
 
-O sistema agora opera sob um modelo de **Triagem Maestro**:
-
-1.  **Agente Maestro (Orquestrador)**: O ponto de entrada. Realiza a triagem da intenção do usuário (Saudação, Escrita ou Consulta) e gerencia a troca de estados entre especialistas.
-2.  **Agente Estruturador**: Especialista em *Outlining*. Assume quando o usuário deseja iniciar um novo projeto de escrita (artigo, tese, etc), propondo estruturas lógicas baseadas nos documentos.
-3.  **Agente de Pergunta e Resposta (QA)**: Especialista em extração de dados e síntese analítica. Atuando de forma prestativa e formal, cita fontes e organiza respostas complexas por documento.
+```mermaid
+graph TD
+    A[Usuário] -->|Input| B(Agente Maestro)
+    B -->|Triagem| C{Intenção?}
+    C -->|Saudação/Ambiguidade| B
+    C -->|Produzir Documento| D[Agente Estruturador]
+    C -->|Dúvida/Análise| E[Agente Q&A]
+    
+    D -->|Busca Global| F[RAG Cobertura Total]
+    E -->|Busca Relevante| F
+    
+    F -->|Contexto| D
+    F -->|Contexto| E
+    
+    D -->|Output| A
+    E -->|Output| A
+```
 
 ---
 
 ## 🏗️ Arquitetura do Projeto
 
-Para suportar a inteligência multiagentes, o projeto está estruturado em:
+O sistema está organizado em camadas modulares para suporte à inteligência avançada:
 
-1.  **Agent Layer (`agents/`)**: Contém a lógica de raciocínio, personas e prompts especializados de cada agente.
-2.  **Service Layer (`services/`)**: Gerenciadores core (`RAGManager`, `ModelManager`) que provêem ferramentas de consulta e modelos para os agentes.
-3.  **Skill Vault (`.agent/skills/`)**: Módulos de conhecimento avançado (AI Engineer, Prompt Specialist, Orchestrator) que expandem as capacidades nativas do sistema.
-4.  **UI Layer (`01_home.py`)**: Interface Streamlit otimizada com indicadores de status de agentes ativos.
+1.  **Agent Layer (`agents/`)**: Lógica de raciocínio e personas especializadas.
+    - `OrchestratorAgent`: O Maestro que gerencia os estados `ORCHESTRATOR`, `ESTRUTURADOR` e `QA`.
+2.  **Service Layer (`services/`)**: Motores de infraestrutura.
+    - `RAGManager`: Gestão de embeddings (ChromaDB) e estratégias de recuperação.
+    - `TextProcessor`: Limpeza, chunking e validação de textos acadêmicos.
+    - `UploadManager`: Orquestração de ingestão e extração de metadados.
+3.  **Directive Layer (`directives/`)**: Módulos de SOP (Standard Operating Procedures) que guiam o comportamento dos agentes em tarefas complexas.
+4.  **Skill Vault (`.agent/skills/`)**: Capacidades expandidas como *AI Engineering*, *Prompt Engineering* e *Frontend Design*.
+5.  **UI Layer (`01_home.py`)**: Interface Streamlit reativa com sinalização de agentes ativos.
 
 ---
 
@@ -43,16 +60,21 @@ Para suportar a inteligência multiagentes, o projeto está estruturado em:
 
 ### Instalação e Execução
 
-1.  **Clone e Prepare o Ambiente**:
+1.  **Prepare o Ambiente**:
     ```bash
     git clone https://github.com/rodrigoassis1996/oraculo-academico.git
     cd oraculo-academico
     python -m venv .venv
-    .\.venv\Scripts\activate  # Windows
+    # Windows
+    .\.venv\Scripts\activate  
+    # Linux/Mac
+    source .venv/bin/activate
+    
     pip install -r requirements.txt
     ```
 
 2.  **Configure o .env**:
+    Crie um arquivo `.env` na raiz com:
     ```env
     OPENAI_API_KEY=sua_chave_aqui
     ```
@@ -64,10 +86,10 @@ Para suportar a inteligência multiagentes, o projeto está estruturado em:
 
 ---
 
-## 🧪 Notas de Qualidade
+## 🧪 Qualidade e Validação
 
-- **Testes Unitários**: O sistema inclui suítes de teste para validar a inicialização do LLM e a lógica do Orquestrador (`tests/unit/`).
-- **Intelligence Validation**: Prompts construídos com técnicas de *Chain-of-Thought* para evitar alucinações.
+- **Testes Unitários**: Localizados em `tests/unit/`, validam desde o carregamento de modelos até a lógica de triagem do Maestro.
+- **Rigor Factual**: Uso de *Chain-of-Thought* nos prompts para garantir que citações e dados venham estritamente dos documentos fornecidos.
 
 Desenvolvido para elevar a produtividade científica com inteligência artificial de ponta. 🎓✨
 
