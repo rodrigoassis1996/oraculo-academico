@@ -7,6 +7,8 @@ O **Oráculo Acadêmico** evoluiu de um simples chat RAG para um ecossistema de 
 ## ✨ Diferenciais Tecnológicos
 
 - **Orquestração Multiagentes**: Arquitetura baseada em papéis técnicos onde um **Agente Orquestrador** planeja a estrutura do documento antes da execução.
+- **Experiência Zero-Click**: Detecção automática de tipo de arquivo e inicialização silenciosa do RAG ao arrastar documentos.
+- **Respostas Humanizadas**: Interface focada no usuário, ocultando termos técnicos do RAG (trechos/chunks) para uma comunicação natural.
 - **Rigor Científico Elevado**: Integrado com skills especialistas em *AI Engineering* e *Prompt Engineering Patterns* para garantir saídas de alta fidelidade.
 - **Cérebro RAG Dinâmico**: Recuperação inteligente de contexto com citações automáticas no formato acadêmico.
 - **Indexação Inteligente**: Deduplicação por Hash (MD5) que economiza processamento ao reconhecer arquivos já indexados.
