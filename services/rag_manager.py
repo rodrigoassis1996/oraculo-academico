@@ -94,13 +94,40 @@ class RAGManager:
         
         # Cliente ChromaDB persistente
         if 'chroma_client' not in st.session_state:
-            st.session_state['chroma_client'] = chromadb.PersistentClient(
-                path=persist_dir,
-                settings=ChromaSettings(
-                    anonymized_telemetry=False,
-                    allow_reset=True  # Permite resetar o banco programaticamente
+            try:
+                st.session_state['chroma_client'] = chromadb.PersistentClient(
+                    path=persist_dir,
+                    settings=ChromaSettings(
+                        anonymized_telemetry=False,
+                        allow_reset=True
+                    )
                 )
-            )
+            except Exception as e:
+                # Se falhar a abertura (comum em corrupção de índice HNSW)
+                st.error(f"⚠️ Erro ao carregar banco de vetores: {str(e)}")
+                st.info("Tentando recuperar limpando dados corrompidos...")
+                
+                # Tenta limpar a pasta e reinicializar
+                try:
+                    if os.path.exists(persist_dir):
+                        shutil.rmtree(persist_dir)
+                    os.makedirs(persist_dir, exist_ok=True)
+                    
+                    st.session_state['chroma_client'] = chromadb.PersistentClient(
+                        path=persist_dir,
+                        settings=ChromaSettings(
+                            anonymized_telemetry=False,
+                            allow_reset=True
+                        )
+                    )
+                    st.success("✅ Banco de vetores reinicializado com sucesso.")
+                except Exception as recovery_error:
+                    st.error(f"❌ Falha crítica na recuperação: {str(recovery_error)}")
+                    # Fallback para cliente em memória se falhar feio
+                    st.session_state['chroma_client'] = chromadb.Client(
+                        settings=ChromaSettings(anonymized_telemetry=False)
+                    )
+
         self.chroma_client = st.session_state['chroma_client']
 
         
