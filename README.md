@@ -9,17 +9,18 @@ O **Oráculo Acadêmico** evoluiu de um simples chat RAG para um ecossistema de 
 - **Orquestração Multiagentes**: Arquitetura baseada em papéis técnicos onde um **Agente Orquestrador** planeja a estrutura do documento antes da execução.
 - **Experiência Zero-Click**: Detecção automática de tipo de arquivo e inicialização silenciosa do RAG ao arrastar documentos.
 - **Respostas Humanizadas**: Interface focada no usuário, ocultando termos técnicos do RAG (trechos/chunks) para uma comunicação natural.
-- **Rigor Científico Elevado**: Integrado com skills especialistas em *AI Engineering* e *Prompt Engineering Patterns* para garantir saídas de alta fidelidade.
-- **Cérebro RAG Dinâmico**: Recuperação inteligente de contexto com citações automáticas no formato acadêmico.
-- **Indexação Inteligente**: Deduplicação por Hash (MD5) que economiza processamento ao reconhecer arquivos já indexados.
+- **RAG com Cobertura Total**: Algoritmo de recuperação per-documento que garante a análise de 100% do corpus subido, evitando lacunas de informação.
+- **Visibilidade Reativa**: Interface Streamlit que reflete em tempo real qual agente está processando a solicitação (Maestro, Estruturador ou QA).
 
 ---
 
-## 🤖 Sistema de Agentes (Fase 1)
+## 🤖 Sistema de Agentes
 
-Atualmente, o sistema conta com a inteligência central ativa:
+O sistema agora opera sob um modelo de **Triagem Maestro**:
 
-1.  **Agente Orquestrador**: Atua como um Coordenador de Pesquisa. Analisa o *corpus* documental subido, entende o objetivo do usuário e propõe um "Plano de Voo" (Outline) estruturado.
+1.  **Agente Maestro (Orquestrador)**: O ponto de entrada. Realiza a triagem da intenção do usuário (Saudação, Escrita ou Consulta) e gerencia a troca de estados entre especialistas.
+2.  **Agente Estruturador**: Especialista em *Outlining*. Assume quando o usuário deseja iniciar um novo projeto de escrita (artigo, tese, etc), propondo estruturas lógicas baseadas nos documentos.
+3.  **Agente de Pergunta e Resposta (QA)**: Especialista em extração de dados e síntese analítica. Atuando de forma prestativa e formal, cita fontes e organiza respostas complexas por documento.
 
 ---
 
