@@ -89,7 +89,7 @@ with tab_debug:
 # ===================== TAB CHAT =====================
 with tab_chat:
     if model_manager.chain is None:
-        st.info('👈 Carregue documento(s) e clique em "Inicializar" para começar.')
+        st.info('👈 Arraste documento(s) para o painel lateral para começar automaticamente.')
     else:
         usar_rag = st.session_state.get('usar_rag', False)
         

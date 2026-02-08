@@ -90,6 +90,21 @@ class UploadManager:
         
         return "\n\n".join(partes)
 
+    def detectar_tipo_arquivo(self, nome_arquivo: str) -> Optional[TipoArquivo]:
+        """
+        Detecta o tipo do arquivo baseado na extensão.
+        """
+        ext = os.path.splitext(nome_arquivo)[1].lower()
+        
+        mapping = {
+            ".pdf": TipoArquivo.PDF,
+            ".docx": TipoArquivo.DOCX,
+            ".csv": TipoArquivo.CSV,
+            ".txt": TipoArquivo.TXT
+        }
+        
+        return mapping.get(ext)
+
     # ==================== VALIDAÇÕES ====================
 
     def validar_tamanho(self, arquivo) -> Tuple[bool, str]:

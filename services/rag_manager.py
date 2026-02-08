@@ -385,10 +385,10 @@ class RAGManager:
         for i, doc in enumerate(docs, 1):
             source = doc.metadata.get('source', 'Desconhecido')
             contexto_partes.append(
-                f"[Trecho {i} - Fonte: {source}]\n{doc.page_content}"
+                f"--- CONTEÚDO DO DOCUMENTO: {source} (Fragmento {i}) ---\n{doc.page_content}"
             )
         
-        return "\n\n---\n\n".join(contexto_partes)
+        return "\n\n".join(contexto_partes)
 
     # ==================== GERENCIAMENTO ====================
 

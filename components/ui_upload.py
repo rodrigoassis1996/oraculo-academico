@@ -8,54 +8,94 @@ from services.upload_manager import UploadManager
 from services.model_manager import ModelManager
 
 def render_upload_widget(upload_manager: UploadManager, model_manager: ModelManager):
-    """Renderiza widget de upload."""
+    """Renderiza widget de upload automatizado."""
 
     st.subheader("📄 Upload de Documentos")
     st.caption(f"Máx: {UPLOAD_CONFIG.MAX_ARQUIVOS} arquivos, {UPLOAD_CONFIG.MAX_SIZE_MB}MB cada")
 
-    tipo_str = st.selectbox(
-        "Tipo de fonte",
-        options=[t.value for t in TipoArquivo],
-        key="tipo_arquivo_select"
+    # Uploader unificado
+    extensoes = [".pdf", ".docx", ".csv", ".txt"]
+    arquivos = st.file_uploader(
+        f"Arraste seus arquivos aqui ({', '.join(extensoes)})",
+        type=[ext.strip('.') for ext in extensoes],
+        accept_multiple_files=True,
+        key="file_uploader_auto"
     )
-    tipo = TipoArquivo(tipo_str)
 
-    if tipo == TipoArquivo.SITE:
-        arquivo = st.text_input("URL do site", key="url_input")
-        arquivos = [arquivo] if arquivo else []
-    else:
-        extensoes_map = {
-            TipoArquivo.PDF: ["pdf"],
-            TipoArquivo.CSV: ["csv"],
-            TipoArquivo.TXT: ["txt"],
-            TipoArquivo.DOCX: ["docx"],
-        }
-        arquivos = st.file_uploader(
-            f"Selecione arquivo(s) {tipo.value}",
-            type=extensoes_map.get(tipo, []),
-            accept_multiple_files=True,
-            key="file_uploader_multi"
-        )
+    # Processamento Automático de Arquivos
+    if arquivos:
+        # Identifica arquivos novos (que ainda não estão no upload_manager)
+        nomes_carregados = {doc.nome for doc in upload_manager.documentos}
+        novos_arquivos = [arq for arq in arquivos if arq.name not in nomes_carregados]
 
-    # Preview dos arquivos selecionados
-    if arquivos and tipo != TipoArquivo.SITE:
-        st.info(f"📎 {len(arquivos)} arquivo(s) selecionado(s)")
+        if novos_arquivos:
+            for arq in novos_arquivos:
+                tipo = upload_manager.detectar_tipo_arquivo(arq.name)
+                if tipo:
+                    with st.spinner(f"Processando {arq.name}..."):
+                        sucesso, mensagem = upload_manager.carregar_documento(tipo, arq)
+                        if sucesso:
+                            st.toast(mensagem, icon="✅")
+                        else:
+                            st.error(mensagem)
+                else:
+                    st.error(f"❌ Tipo de arquivo não suportado: {arq.name}")
+            
+            # Se carregou novos arquivos, marca para inicialização automática
+            st.session_state['trigger_auto_init'] = True
+            st.rerun()
 
-    # Botão adicionar
-    if st.button("➕ Adicionar", use_container_width=True, disabled=not arquivos):
-        for arq in arquivos:
-            with st.spinner(f"Carregando {arq if tipo == TipoArquivo.SITE else arq.name}..."):
-                sucesso, mensagem = upload_manager.carregar_documento(tipo, arq)
-            if sucesso:
-                st.success(mensagem)
-            else:
-                st.error(mensagem)
+    # Opção para URL (mantida separada por ser outro fluxo)
+    with st.expander("🌐 Adicionar de Website"):
+        url = st.text_input("URL do site", key="url_input_auto")
+        if st.button("Adicionar Link", use_container_width=True, disabled=not url):
+            with st.spinner(f"Carregando {url}..."):
+                sucesso, mensagem = upload_manager.carregar_documento(TipoArquivo.SITE, url)
+                if sucesso:
+                    st.toast(mensagem, icon="✅")
+                    st.session_state['trigger_auto_init'] = True
+                    st.rerun()
+                else:
+                    st.error(mensagem)
 
     st.divider()
     render_lista_documentos(upload_manager)
 
     st.divider()
+    
+    # Gatilho de Inicialização Automática
+    if st.session_state.get('trigger_auto_init') and upload_manager.total_documentos > 0:
+        st.session_state.pop('trigger_auto_init')
+        auto_inicializar(upload_manager, model_manager)
+
     render_botoes_acao(upload_manager, model_manager)
+
+def auto_inicializar(upload_manager: UploadManager, model_manager: ModelManager):
+    """Executa a inicialização silenciosa/automática do RAG."""
+    total = upload_manager.total_documentos
+    usar_rag = st.session_state.get('toggle_rag', True) # Default True
+    
+    with st.status("🚀 Inicializando Oráculo...", expanded=True) as status:
+        documentos = [(doc.nome, doc.get_conteudo(), doc.hash) for doc in upload_manager.documentos]
+        
+        try:
+            if usar_rag:
+                stats = model_manager.criar_chain_rag(
+                    documentos=documentos,
+                    progress_callback=None # Silencioso ou usa o status
+                )
+                status.update(label="✅ RAG Inicializado!", state="complete", expanded=False)
+                st.toast(f"RAG Pronto: {stats['total_chunks']} chunks", icon="🧠")
+            else:
+                model_manager.criar_chain_simples(
+                    documentos_conteudo=upload_manager.conteudo_combinado,
+                    total_documentos=total
+                )
+                status.update(label="✅ Oráculo Pronto!", state="complete", expanded=False)
+                st.toast("Modo Simples Pronto", icon="🤖")
+        except Exception as e:
+            status.update(label="❌ Erro na Inicialização", state="error")
+            st.error(f"Erro: {e}")
 
 def render_lista_documentos(upload_manager: UploadManager):
     """Renderiza lista de documentos carregados."""
