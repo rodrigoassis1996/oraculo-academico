@@ -102,7 +102,7 @@ with tab_chat:
 
 
         # --- CONTAINER DE SCROLL ---
-        chat_container = st.container(height=350, border=False)
+        chat_container = st.container(height=400, border=False)
 
         # 1. Renderiza histórico DENTRO do container de scroll
         with chat_container:
@@ -110,8 +110,26 @@ with tab_chat:
                 with st.chat_message(msg['role']):
                     st.markdown(msg['content'])
             
-            # O st.container(height=...) rola automaticamente para o final
-            pass
+            # --- LOGICA DE BOTÕES DE FEEDBACK (DENTRO DO SCROLL) ---
+            if st.session_state.get('agente_ativo') == 'AGUARDANDO_APROVACAO':
+                st.info("💡 **Dica:** Você pode aprovar a estrutura acima ou solicitar ajustes específicos.")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("✅ Aprovar Estrutura", use_container_width=True, key="btn_aprovar"):
+                        model_manager.adicionar_mensagem('human', "Estrutura aprovada!")
+                        model_manager.adicionar_mensagem('ai', "Excelente! Agora que a estrutura está definida, como deseja prosseguir com a escrita ou análise?")
+                        st.session_state['agente_ativo'] = 'ORCHESTRATOR'
+                        st.rerun()
+                        
+                with col2:
+                    if st.button("❌ Ajustar Estrutura", use_container_width=True, key="btn_ajustar"):
+                        st.warning("⚠️ Descreva os ajustes desejados no campo de texto abaixo.")
+                        
+                with col3:
+                    if st.button("🔄 Ignorar/Mudar de Assunto", use_container_width=True, key="btn_ignorar"):
+                        st.session_state['agente_ativo'] = 'ORCHESTRATOR'
+                        st.rerun()
 
 # 2. Input do Usuário (Nível raiz para o Streamlit fixar automaticamente)
 if model_manager.chain is not None:

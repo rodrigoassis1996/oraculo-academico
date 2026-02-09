@@ -9,8 +9,10 @@ O **Oráculo Acadêmico** evoluiu de um simples chat RAG para um ecossistema de 
 - **Orquestração Multiagentes**: Arquitetura baseada em papéis técnicos onde um **Agente Maestro** planeja a estrutura do documento antes da execução.
 - **Experiência Zero-Click**: Detecção automática de tipo de arquivo e inicialização silenciosa do RAG ao arrastar documentos.
 - **Respostas Humanizadas**: Interface focada no usuário, ocultando termos técnicos do RAG para uma comunicação natural.
-- **RAG com Cobertura Total**: Algoritmo de recuperação per-documento que garante a análise de 100% do corpus subido, realizando buscas exaustivas em cada arquivo individualmente.
-- **Sincronização Inteligente**: Indexação incremental com base em hashes, garantindo que apenas novos conteúdos sejam processados, economizando tokens e tempo.
+- **Escrita Acadêmica Iterativa**: Loop de feedback integrado onde o usuário pode aprovar ou refinar estruturas sugeridas sucessivamente.
+- **Concisão e Rigor**: Resumos de até 300 caracteres por seção para manter a objetividade.
+- **Gestão de Estado Persistente**: O sistema mantém o modo de estruturação até a aprovação final, impedindo fuga de escopo.
+- **RAG com Cobertura Total**: Algoritmo de recuperação per-documento que garante a análise de 100% do corpus subido.
 
 ---
 
@@ -24,14 +26,16 @@ graph TD
     C -->|Produzir Documento| D[Agente Estruturador]
     C -->|Dúvida/Análise| E[Agente Q&A]
     
+    D -->|Estrutura Sugerida| G{Aprovação?}
+    G -->|Aprovar| A
+    G -->|Ajustar| D
+    G -->|Ignorar| B
+    
     D -->|Busca Global| F[RAG Cobertura Total]
     E -->|Busca Relevante| F
     
     F -->|Contexto| D
     F -->|Contexto| E
-    
-    D -->|Output| A
-    E -->|Output| A
 ```
 
 ---

@@ -30,8 +30,7 @@ class OrchestratorAgent:
             raise ValueError("LLM não inicializado no ModelManager.")
 
         # 1. Classificação de Intenção (Fase Silenciosa)
-        # Se o input_usuario for igual ao último classificado, pulamos para não gastar tokens extras
-        # Embora o Streamlit possa chamar isso de novo, a lógica de persistência ajuda.
+        # Delegamos para o método de classificação que já possui as proteções de estado
         self.classificar_e_atualizar_estado(input_usuario)
         
         # 2. Seleção do Prompt baseado no Estado Atual
@@ -66,6 +65,10 @@ class OrchestratorAgent:
             'chat_history': self.mm.get_historico_langchain()
         }):
             yield chunk.content
+        
+        # Se o agente for o Estruturador, entramos no estado de guarda para aprovação
+        if st.session_state['agente_ativo'] == 'ESTRUTURADOR':
+            st.session_state['agente_ativo'] = 'AGUARDANDO_APROVACAO'
 
     def _is_global_query(self, input_usuario: str, agente_ativo: str) -> bool:
         """Detecta se a pergunta exige análise de todos os documentos."""
@@ -86,6 +89,13 @@ class OrchestratorAgent:
 
     def classificar_e_atualizar_estado(self, input_usuario: str):
         """Usa o LLM para classificar a intenção e atualizar o st.session_state['agente_ativo']."""
+        # Proteção 1: Se estivermos em loop de refinamento ou estruturando, mantemos o estado
+        # até que o usuário aprove ou mude explicitamente (via botões na UI)
+        estado_atual = st.session_state.get('agente_ativo')
+        if estado_atual in ['AGUARDANDO_APROVACAO', 'ESTRUTURADOR']:
+            st.session_state['agente_ativo'] = 'ESTRUTURADOR'
+            return
+
         # Só classifica se for uma nova mensagem (prevenção de loop de tokens no rerun)
         last_classified = st.session_state.get('last_input_classified')
         if last_classified == input_usuario:
