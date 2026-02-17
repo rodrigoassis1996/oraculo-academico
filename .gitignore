@@ -25,3 +25,5 @@ bckp/
 
 # Oráculo specifics
 teste.py
+credentials.json
+token.json

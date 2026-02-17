@@ -7,6 +7,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from config.settings import CONFIG_MODELOS, DEFAULT_MODEL_PARAMS, PROMPTS, RAG_CONFIG
 from services.rag_manager import RAGManager
+from services.google_docs.auth import AuthManager
+from services.google_docs.client import GoogleDocsClient
+from services.google_docs.formatter import AcademicFormatter
+from services.google_docs.document_manager import DocumentManager
 from agents.orchestrator import OrchestratorAgent
 
 class ModelManager:
@@ -16,7 +20,23 @@ class ModelManager:
     def __init__(self):
         self._init_session_state()
         self.rag_manager = RAGManager()
-        self.orchestrator = OrchestratorAgent(self)
+        self._init_google_docs()
+        self.orchestrator = OrchestratorAgent(self, docs_manager=self.docs_manager)
+
+    def _init_google_docs(self):
+        """Inicializa componentes do Google Docs."""
+        try:
+            import os
+            credentials_path = os.path.join(os.getcwd(), "credentials.json")
+            if os.path.exists(credentials_path):
+                auth = AuthManager(credentials_path)
+                client = GoogleDocsClient(auth)
+                formatter = AcademicFormatter(style="ABNT")
+                self.docs_manager = DocumentManager(client, formatter)
+            else:
+                self.docs_manager = None
+        except Exception:
+            self.docs_manager = None
 
 
     def _init_session_state(self) -> None:

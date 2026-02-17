@@ -45,6 +45,12 @@ if 'upload_manager' not in st.session_state:
 if 'model_manager' not in st.session_state:
     st.session_state['model_manager'] = ModelManager()
 
+# --- Hotfix para instâncias obsoletas no session_state ---
+if not hasattr(st.session_state['model_manager'].orchestrator, 'create_google_doc_from_structure'):
+    del st.session_state['model_manager']
+    st.session_state['model_manager'] = ModelManager()
+    st.rerun()
+
 upload_manager = st.session_state['upload_manager']
 model_manager = st.session_state['model_manager']
 
@@ -99,6 +105,12 @@ with tab_chat:
             label_agente = AGENT_LABELS.get(agente_ativo, agente_ativo)
             st.info(f"🎓 **{label_agente}:** Processando solicitação acadêmica.")
             st.caption(f"🧠 RAG ativo: {stats.get('total_chunks', 0)} chunks")
+        
+        # --- EXIBIÇÃO DO LINK DO GOOGLE DOCS ---
+        doc_id = st.session_state.get('active_doc_id')
+        if doc_id:
+            doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
+            st.success(f"📝 **Documento em edição:** [Abrir no Google Docs]({doc_url})")
 
 
         # --- CONTAINER DE SCROLL ---
@@ -118,7 +130,39 @@ with tab_chat:
                 with col1:
                     if st.button("✅ Aprovar Estrutura", use_container_width=True, key="btn_aprovar"):
                         model_manager.adicionar_mensagem('human', "Estrutura aprovada!")
-                        model_manager.adicionar_mensagem('ai', "Excelente! Agora que a estrutura está definida, como deseja prosseguir com a escrita ou análise?")
+                        
+                        # Tenta encontrar a última proposta de estrutura/análise da IA
+                        ultima_resposta = ""
+                        for msg in reversed(model_manager.mensagens):
+                            if msg['role'] == 'ai':
+                                # Se encontrarmos uma mensagem que pareça ser uma proposta, paramos nela
+                                content = msg['content']
+                                if "###" in content or "Estrutura" in content or "Sugestão" in content:
+                                    ultima_resposta = content
+                                    break
+                                # Caso contrário, guardamos a última mensagem da IA como backup
+                                if not ultima_resposta:
+                                    ultima_resposta = content
+                        
+                        # Extrai a estrutura real via LLM se houver resposta anterior
+                        if ultima_resposta:
+                            with st.spinner("Analisando proposta de estrutura..."):
+                                structure = model_manager.orchestrator.extrair_estrutura_da_mensagem(ultima_resposta)
+                        else:
+                            structure = None
+                        
+                        if structure and structure.get("secoes"):
+                            # Tenta criar o Doc (reutiliza se já existir)
+                            doc_id = model_manager.orchestrator.create_google_doc_from_structure(structure)
+                            if doc_id:
+                                st.success(f"Excelente! O documento foi preparado com {len(structure['secoes'])} seções.")
+                                st.markdown(f"**Link**: [Clique aqui para abrir](https://docs.google.com/document/d/{doc_id})")
+                                st.info("Como deseja prosseguir?")
+                            else:
+                                st.error("Não foi possível criar o documento no Google Docs. Verifique as credenciais.")
+                        else:
+                            st.warning("⚠️ Não identifiquei uma proposta de estrutura clara na última mensagem. Por favor, peça para o Oráculo 'estruturar o documento' primeiro.")
+                        
                         st.session_state['agente_ativo'] = 'ORCHESTRATOR'
                         st.rerun()
                         
