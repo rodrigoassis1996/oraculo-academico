@@ -57,44 +57,108 @@ class DocumentManager:
         doc_id: str,
         section_key: str,
         content: str,
-        mode: Literal["replace", "append"] = "replace"
+        mode: Literal["replace", "append"] = "replace",
+        title_hint: Optional[str] = None
     ) -> None:
         """
         Writes content to a specific section with proper ABNT formatting.
+        Converts markdown patterns to native Google Docs formatting.
         """
+        import re
+        
         placeholder = self.formatter.create_section_placeholder(section_key)
         matches = self.client.find_text(doc_id, placeholder)
         
-        if not matches:
-            raise APIError(f"Marcador {placeholder} não encontrado no documento.")
+        candidate_ranges = []
+        
+        if matches:
+            candidate_ranges.append(matches[0])
             
-        start, end = matches[0]
+        if title_hint:
+            # Check by Title as well to catch duplicates/existing content
+            print(f"[DOCS MANAGER] Verificando existência por título: '{title_hint}'")
+            ranges = self.client.find_section_ranges_by_title(doc_id, title_hint)
+            if ranges:
+                print(f"[DOCS MANAGER] Encontrados {len(ranges)} ranges via título.")
+                candidate_ranges.extend(ranges)
+            else:
+                print(f"[DOCS MANAGER] Nenhum range encontrado via título.")
+                
+        if not candidate_ranges:
+            raise APIError(f"Não foi possível localizar a seção. Placeholder {placeholder} não encontrado e título '{title_hint}' não localizado.")
+
+        # Merge Overlapping Ranges to avoid index errors during deletion
+        # Sort by start index
+        candidate_ranges.sort(key=lambda x: x[0])
+        
+        merged_ranges = []
+        if candidate_ranges:
+            curr_start, curr_end = candidate_ranges[0]
+            for i in range(1, len(candidate_ranges)):
+                next_start, next_end = candidate_ranges[i]
+                if next_start <= curr_end:  # Overlap or Adjacent
+                    curr_end = max(curr_end, next_end)
+                else:
+                    merged_ranges.append((curr_start, curr_end))
+                    curr_start, curr_end = next_start, next_end
+            merged_ranges.append((curr_start, curr_end))
+            
+        # Insertion point is the start of the first merged range (topmost)
+        start = merged_ranges[0][0]
         
         if mode == "replace":
-            # Remove placeholder
-            self.client.delete_range(doc_id, start, end)
+            # Remove all merged ranges in REVERSE order
+            for r_start, r_end in reversed(merged_ranges):
+                print(f"[DOCS MANAGER] Removendo range unificado: {r_start}-{r_end}")
+                self.client.delete_range(doc_id, r_start, r_end)
             
-            # Insert styled content
-            # We treat content as a series of paragraphs for now
-            paragraphs = content.split('\n')
+            # Parse content lines and classify each one
+            lines = content.split('\n')
             current_idx = start
             all_requests = []
             
-            for p in paragraphs:
-                if not p.strip():
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
                     continue
-                # For Phase 2, we assume the first line of a section might be a heading or just text
-                # In refined logic, we'd distinguish headings. 
-                # For now, let's just format all as paragraphs.
-                reqs = self.formatter.format_paragraph(p, current_idx)
+                
+                # Detect markdown heading: ### Title or ## Title
+                heading_match = re.match(r'^(#{2,3})\s+(.*)', stripped)
+                if heading_match:
+                    level_str = heading_match.group(1)
+                    heading_text = heading_match.group(2).strip()
+                    
+                    # ANTI-DUPLICATION: Skip if heading matches the Section Title
+                    if title_hint and heading_text.lower() == title_hint.strip().lower():
+                        print(f"[DOCS MANAGER] Removendo título duplicado no conteúdo: '{heading_text}'")
+                        continue
+
+                    # ## = level 1 (section), ### = level 2 (subsection)
+                    level = 1 if len(level_str) == 2 else 2
+                    reqs = self.formatter.format_heading(heading_text, level=level, index=current_idx)
+                    all_requests.extend(reqs)
+                    current_idx += len(heading_text) + 1  # +1 for newline
+                    continue
+                
+                # Strip markdown bold markers **text** → text
+                clean_line = re.sub(r'\*\*(.*?)\*\*', r'\1', stripped)
+                # Strip markdown italic markers *text* → text
+                clean_line = re.sub(r'\*(.*?)\*', r'\1', clean_line)
+                # Strip bullet markers - text → text
+                clean_line = re.sub(r'^[-•]\s+', '', clean_line)
+                
+                # ANTI-DUPLICATION: Skip if plain text matches the Section Title
+                if title_hint and clean_line.strip().lower() == title_hint.strip().lower():
+                    print(f"[DOCS MANAGER] Removendo título duplicado (texto): '{clean_line}'")
+                    continue
+
+                reqs = self.formatter.format_paragraph(clean_line, current_idx)
                 all_requests.extend(reqs)
-                current_idx += len(p) + 1 # +1 for newline
+                current_idx += len(clean_line) + 1  # +1 for newline
                 
             self.client.batch_update(doc_id, all_requests)
         else:
-            # Append logic (simplified: just add as paragraph at the end of section)
-            # Finding the "end of section" is tricky without markers for section ends.
-            # For now, append just after where the placeholder was.
+            # Append logic (simplified: add as paragraph at the end of section)
             reqs = self.formatter.format_paragraph(content, end)
             self.client.batch_update(doc_id, reqs)
 
@@ -111,7 +175,8 @@ class DocumentManager:
             
         # Find next placeholder
         import re
-        next_matches = list(re.finditer(r'\{\{#.*?\#\}\}', full_text[start_idx + len(placeholder):]))
+        # Busca por {{*KEY*}}
+        next_matches = list(re.finditer(r'\{\{\*.*?\*\}\}', full_text[start_idx + len(placeholder):]))
         
         if next_matches:
             end_idx = start_idx + len(placeholder) + next_matches[0].start()
@@ -136,9 +201,9 @@ class DocumentManager:
         Removes all remaining placeholders.
         """
         full_text = self.get_full_content(doc_id)
-        # Find all patterns like {{#...#}}
+        # Find all patterns like {{*...*}}
         import re
-        placeholders = re.findall(r'\{\{#.*?\#\}\}', full_text)
+        placeholders = re.findall(r'\{\{\*.*?\*\}\}', full_text)
         
         for p in placeholders:
             matches = self.client.find_text(doc_id, p)

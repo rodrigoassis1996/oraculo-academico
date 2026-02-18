@@ -1,42 +1,45 @@
-# 👨🏾‍🎓 Oráculo Acadêmico: Ecossistema Multiagentes
+# 👨🏾‍🎓 Oráculo Acadêmico: Ecossistema de IA Full Stack
 
-O **Oráculo Acadêmico** é um assistente de escrita científica de ponta que integra inteligência artificial RAG (Retrieval-Augmented Generation) com a produtividade do **Google Docs**. Projetado para mestrandos e pesquisadores, o sistema não apenas responde dúvidas, mas co-autora documentos seguindo rigorosamente as normas **ABNT**.
+O **Oráculo Acadêmico** evoluiu de uma ferramenta experimental para um ecossistema robusto de assistência científica. Ele integra inteligência artificial de ponta (**RAG - Retrieval-Augmented Generation**) com a produtividade do **Google Docs**, garantindo que mestrandos e pesquisadores produzam textos de alta qualidade técnica seguindo rigorosamente as normas **ABNT**.
 
 ---
 
 ## ✨ Diferenciais Tecnológicos
 
-- **Integração Nativa com Google Docs**: Criação automática de documentos e persistência bidirecional de seções e edições.
-- **Rigor ABNT Automatizado**: Formatação nativa de margens (3cm/2cm), fontes (Times New Roman), espaçamentos (1.5) e títulos em caixa alta.
-- **Sessão Aderente (Sticky Sections)**: O sistema mantém o contexto da seção em edição, permitindo ajustes sucessivos sem necessidade de repetir o capítulo.
-- **Limpeza de Ruído Conversacional**: Filtro inteligente que remove saudações e comentários da IA, salvando apenas o texto acadêmico puro no documento.
-- **Resiliência Industrial**: Mecanismo de *Exponential Backoff* para lidar com limites de cota da API do Google, garantindo estabilidade em fluxos intensos.
-- **Triagem Multiagente**: Um orquestrador maestro que roteia pedidos entre especialistas em **Estruturação/Redação** e **Análise/QA**.
+- **Arquitetura Full Stack Moderna**: Backend resiliente em FastAPI e Frontend reativo em React 19.
+- **Cérebro Multiagente (Maestro)**: Um orquestrador inteligente que tria solicitações entre especialistas em **Redação/Estruturação** e **Análise/QA**.
+- **Integração Nativa Google Docs**:
+    - Persistência automática via placeholders inteligentes (`{{*KEY*}}`).
+    - Fatiamento de seções baseado em cabeçalhos acadêmicos (`###`).
+    - Formatação ABNT nativa automatizada (margens, fontes, espaçamentos).
+- **Garantia de Qualidade (QA)**: Suíte abrangente com **42 testes automatizados** (Backend + Frontend).
+- **Resiliência Industrial**: Protocolos de auto-recuperação para o banco vetorial e rate limiting exponencial para APIs externas.
 
 ---
 
-## 🤖 Fluxo de Inteligência e Escrita
+## 🤖 Fluxo de IA e Roteamento
 
-O oráculo utiliza um fluxo de trabalho em fases para garantir que você tenha controle total sobre a estrutura antes da redação final.
+O sistema utiliza um fluxo de trabalho orquestrado para garantir precisão e contexto em cada etapa da pesquisa acadêmica.
 
 ```mermaid
 graph TD
-    A[Usuário] -->|Input| B(Orquestrador)
-    B -->|Triagem| C{Intenção?}
-    C -->|Produzir/Editar| D[Agente Redator]
-    C -->|Dúvida/Análise| E[Agente Q&A]
+    A[Usuário] -->|Input| B(Orquestrador / Maestro)
+    B -->|Triagem Inteligente| C{Intenção?}
+    
+    C -->|Produzir / Editar| D[Agente Estruturador]
+    C -->|Dúvida / Análise| E[Agente QA / Consulta]
     
     D -->|Proposta de Estrutura| F{Aprovação?}
-    F -->|Sim| G[Criar Google Doc ABNT]
+    F -->|Sim| G[Sistema Google Docs ABNT]
     F -->|Ajustar| D
     
-    G -->|Escrita de Seção| H[Persistência no Doc]
+    G -->|Escrita de Seção| H[Persistência via {{*KEY*}}]
     H -->|Refinamento Contextual| D
     
     E -->|Resposta Baseada em Dados| A
     
-    subgraph "Camada de Dados"
-        R[RAG Cobertura Total]
+    subgraph "Camada de Conhecimento"
+        R[RAG Global & Local]
     end
     
     D --> R
@@ -45,55 +48,69 @@ graph TD
 
 ---
 
-## 🏗️ Arquitetura do Projeto
+## 🏗️ Estrutura do Projeto
 
-O sistema é dividido em módulos de alta coesão:
+O Oráculo Acadêmico é organizado em camadas para facilitar a manutenção e escalabilidade:
 
-1.  **Agent Layer (`agents/`)**: Lógica de raciocínio, personas e prompts de rigor acadêmico.
-2.  **Google Docs Service (`services/google_docs/`)**:
-    - `DocumentManager`: Gestor de alto nível de seções e placeholders.
-    - `AcademicFormatter`: O "bibliotecário" das normas ABNT.
-    - `GoogleDocsClient`: Driver resiliente com rate limiting.
-3.  **RAG Service (`services/`)**: Motor de busca vetorial (ChromaDB) e processamento de textos.
-4.  **UI Layer (`01_home.py`)**: Interface Streamlit reativa com suporte a link direto para documentos ativos.
+### 🐍 Backend (Python 3.11 + FastAPI)
+- `agents/`: Definições de personas, prompts e o motor do Orquestrador.
+- `services/`: 
+    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente resiliente.
+    - `rag/`: Motor vetorial (ChromaDB) com suporte a auto-recuperação.
+- `main_api.py`: API RESTful com suporte a Streaming de IA e gestão de sessões.
+
+### ⚛️ Frontend (React 19 + TypeScript)
+- Localizado em `frontend/`.
+- UI moderna e reativa utilizando **TailwindCSS** e **Ant Design**.
+- Gestão de estado global com **Zustand** e query handling com **TanStack Query**.
+
+### 🧪 QA & Testes (Pytest + Vitest)
+- `tests/`: 36 testes de backend (unitários e integração).
+- `frontend/src/__tests__/`: 6 testes de frontend (fluxo de chat e store).
 
 ---
 
 ## 🚀 Como Executar
 
 ### Pré-requisitos
-- Python 3.10+
-- Chave de API OpenAI
-- **Google Cloud Suite**: Um arquivo `credentials.json` (Service Account ou OAuth) na raiz do projeto.
+- Python 3.11+ e Node.js 18+
+- Chave de API OpenAI (em `.env`)
+- Google Cloud: Arquivo `credentials.json` na raiz do projeto.
 
-### Instalação
+### Instalação Simplificada
 
-1.  **Clone e Prepare**:
+1.  **Backend**:
     ```bash
-    git clone https://github.com/rodrigoassis1996/oraculo-academico.git
-    cd oraculo-academico
     python -m venv .venv
-    .\.venv\Scripts\activate  # Windows
+    .\.venv\Scripts\activate
     pip install -r requirements.txt
+    python -m uvicorn main_api:app --reload
     ```
 
-2.  **Configuração**:
-    - Adicione sua `OPENAI_API_KEY` ao arquivo `.env`.
-    - Coloque o `credentials.json` na raiz.
-
-3.  **Inicie**:
+2.  **Frontend**:
     ```bash
-    streamlit run 01_home.py
+    cd frontend
+    npm install
+    npm run dev
     ```
 
 ---
 
-## 🧪 Qualidade e Validação
+## 🧪 Suíte de Validação
 
-O sistema conta com uma suíte de **30 testes automatizados** locallizados em `tests/`, garantindo:
-- Integridade de Conteúdo (ABNT).
-- Estabilidade de Conexão com Google API.
-- Precisão na Triagem de Agentes.
+Para garantir que cada alteração seja segura, execute os testes:
 
-**Oráculo Acadêmico**: Transformando a carga de trabalho acadêmica em um processo de co-criação fluído e padronizado. 🎓👨🏾‍🎓✨
+```bash
+# Rodar todos os testes de backend
+pytest tests/
 
+# Rodar testes de frontend
+cd frontend
+npm test
+```
+
+**Atualmente: 42/42 testes passando com 100% de sucesso.**
+
+---
+
+**Oráculo Acadêmico**: Transformando a complexidade da pesquisa científica em um processo de co-criação fluído, estável e padronizado. 🎓👨🏾‍🎓✨

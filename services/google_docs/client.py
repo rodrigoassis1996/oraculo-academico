@@ -114,39 +114,91 @@ class GoogleDocsClient:
 
     def find_text(self, doc_id: str, query: str) -> List[tuple[int, int]]:
         """
-        Returns list of (start, end) indices for all matches.
-        Note: This requires reading the full document content first as the API 
-        doesn't provide a direct 'find' endpoint.
+        Returns list of (start, end) indices for all matches with CORRECT Google Docs indexes.
         """
         doc = self.get_document(doc_id)
-        full_text = ""
-        # Extract plain text from document content
         results = []
-        
-        # Simple text extraction for search (recursive would be better for complex docs)
-        def extract_text(elements):
-            text = ""
+        import re
+
+        def search_in_elements(elements):
             for element in elements:
                 if 'paragraph' in element:
+                    para_text = ""
+                    para_start = element['startIndex']
                     for part in element['paragraph']['elements']:
                         if 'textRun' in part:
-                            text += part['textRun']['content']
+                            para_text += part['textRun']['content']
+                    
+                    # Search within this paragraph
+                    for m in re.finditer(re.escape(query), para_text):
+                        results.append((para_start + m.start(), para_start + m.end()))
+                
                 elif 'table' in element:
                     for row in element['table']['tableRows']:
                         for cell in row['tableCells']:
-                            text += extract_text(cell['content'])
-            return text
-
-        full_text = extract_text(doc.get('body').get('content'))
+                            search_in_elements(cell['content'])
         
-        start_idx = 0
-        while True:
-            idx = full_text.find(query, start_idx)
-            if idx == -1:
-                break
-            results.append((idx + 1, idx + len(query) + 1)) # Docs API index is 1-based (mostly)
-            # Actually, Docs API indices can be tricky. Heading/TOC etc affect them.
-            # For simplicity in Phase 1, we assume a relatively flat structure.
-            start_idx = idx + len(query)
-            
+        search_in_elements(doc.get('body').get('content'))
         return results
+
+    def find_section_ranges_by_title(self, doc_id: str, title: str) -> List[tuple[int, int]]:
+        """
+        Finds ALL content ranges (start, end) for a section by its Heading 1 title.
+        Returns list of (start, end) tuples. Helpful for cleaning up duplicates.
+        """
+        import unicodedata
+        
+        def normalize_text(t: str) -> str:
+            return ''.join(c for c in unicodedata.normalize('NFD', t) 
+                          if unicodedata.category(c) != 'Mn').lower()
+
+        doc = self.get_document(doc_id)
+        content = doc.get('body', {}).get('content', [])
+        
+        target_title = normalize_text(title.strip())
+        ranges = []
+        
+        i = 0
+        while i < len(content):
+            element = content[i]
+            if 'paragraph' in element:
+                p = element['paragraph']
+                style = p.get('paragraphStyle', {}).get('namedStyleType', '')
+                
+                # Check if it's a Heading 1
+                if style == 'HEADING_1':
+                    text = ""
+                    for part in p.get('elements', []):
+                        if 'textRun' in part:
+                            text += part['textRun']['content']
+                    
+                    # Normalize doc text: remove accents, hashes, whitespace
+                    clean_text = text.replace('#', '').strip()
+                    clean_text_norm = normalize_text(clean_text)
+                    
+                    # Check match
+                    if clean_text_norm == target_title or target_title in clean_text_norm:
+                        start_index = element['endIndex']
+                        end_index = -1
+                        
+                        # Find the END (Next Heading 1 or End of Doc)
+                        j = i + 1
+                        while j < len(content):
+                             next_el = content[j]
+                             if 'paragraph' in next_el:
+                                 next_style = next_el['paragraph'].get('paragraphStyle', {}).get('namedStyleType', '')
+                                 if next_style == 'HEADING_1':
+                                     # Found next section
+                                     end_index = max(start_index, next_el['startIndex'] - 1)
+                                     break
+                             j += 1
+                        
+                        if end_index == -1:
+                            # Last section
+                            last_idx = content[-1]['endIndex']
+                            end_index = last_idx - 1
+                        
+                        ranges.append((start_index, end_index))
+            i += 1
+                        
+        return ranges

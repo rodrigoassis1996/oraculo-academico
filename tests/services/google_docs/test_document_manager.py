@@ -15,7 +15,7 @@ class TestDocumentManager:
     @pytest.fixture
     def mock_formatter(self):
         formatter = MagicMock(spec=AcademicFormatter)
-        formatter.create_section_placeholder.side_effect = lambda k: f"{{{{#{k}#}}}}"
+        formatter.create_section_placeholder.side_effect = lambda k: f"{{{{*{k}*}}}}"
         formatter.get_document_style_requests.return_value = [{"updateDocumentStyle": {}}]
         formatter.format_paragraph.side_effect = lambda text, idx: [{"insertText": {"location": {"index": idx}, "text": f"{text}\n"}}]
         formatter.format_heading.side_effect = lambda text, level, index: [{"insertText": {"location": {"index": index}, "text": f"{text}\n"}}]
@@ -57,7 +57,7 @@ class TestDocumentManager:
     def test_get_section_content_extraction(self, doc_manager, mock_client):
         """Correctly extracts content between specific placeholders."""
         # Content with placeholders
-        content = "Título\n{{#INTRO#}}\nConteúdo da introdução\n{{#CONCL#}}\nFim"
+        content = "Título\n{{*INTRO*}}\nConteúdo da introdução\n{{*CONCL*}}\nFim"
         # Since get_full_content uses get_document, we mock both
         mock_client.get_document.return_value = {
             'body': {
@@ -72,7 +72,7 @@ class TestDocumentManager:
         """Finalization cleanup works as expected."""
         mock_client.get_document.return_value = {
             'body': {
-                'content': [{'paragraph': {'elements': [{'textRun': {'content': 'Texto {{#INTRO#}}'}}]}}]
+                'content': [{'paragraph': {'elements': [{'textRun': {'content': 'Texto {{*INTRO*}}'}}]}}]
             }
         }
         mock_client.find_text.return_value = [(6, 15)]

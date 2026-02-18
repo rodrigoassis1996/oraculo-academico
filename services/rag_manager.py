@@ -31,9 +31,13 @@ class RAGManager:
     Responsável por embeddings, armazenamento e recuperação.
     """
 
-    def __init__(self, config: RAGConfig = None):
+    def __init__(self, config: RAGConfig = None, session_state: dict = None):
         from config.settings import RAG_CONFIG
         self.config = config or RAG_CONFIG
+        # Se um estado externo for passado (FastAPI), usa ele.
+        # Caso contrário, tenta usar o do Streamlit se disponível.
+        self._external_state = session_state
+        
         self.text_processor = TextProcessor(
             ChunkConfig(
                 chunk_size=self.config.chunk_size,
@@ -44,6 +48,13 @@ class RAGManager:
         self._init_embeddings()
         self._init_vector_store()
         self._lifecycle_purge()
+
+    @property
+    def session_state(self):
+        """Retorna o estado da sessão atual (Dict ou st.session_state)."""
+        if self._external_state is not None:
+            return self._external_state
+        return st.session_state
 
     def _lifecycle_purge(self):
         """Remove arquivos temporários e índices com mais de 48h."""
@@ -67,18 +78,18 @@ class RAGManager:
 
     def _init_session_state(self):
         """Inicializa session state."""
-        if 'rag_chunks' not in st.session_state:
-            st.session_state['rag_chunks'] = []
-        if 'rag_initialized' not in st.session_state:
-            st.session_state['rag_initialized'] = False
+        if 'rag_chunks' not in self.session_state:
+            self.session_state['rag_chunks'] = []
+        if 'rag_initialized' not in self.session_state:
+            self.session_state['rag_initialized'] = False
 
     def _init_embeddings(self):
         """Inicializa modelo de embeddings."""
         # Cache do modelo para não recarregar
-        if 'embedding_model' not in st.session_state:
+        if 'embedding_model' not in self.session_state:
             # Bug fix: 'Cannot copy out of meta tensor' em versões recentes de torch/transformers
             # Forçamos o carregamento direto no CPU sem usar meta tensors se possível
-            st.session_state['embedding_model'] = HuggingFaceEmbeddings(
+            self.session_state['embedding_model'] = HuggingFaceEmbeddings(
                 model_name=self.config.embedding_model,
                 model_kwargs={
                     'device': 'cpu',
@@ -86,16 +97,16 @@ class RAGManager:
                 },
                 encode_kwargs={'normalize_embeddings': True}
             )
-        self.embeddings = st.session_state['embedding_model']
+        self.embeddings = self.session_state['embedding_model']
 
     def _init_vector_store(self):
         """Inicializa vector store persistente."""
         persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp', 'vector_db'))
         
         # Cliente ChromaDB persistente
-        if 'chroma_client' not in st.session_state:
+        if 'chroma_client' not in self.session_state:
             try:
-                st.session_state['chroma_client'] = chromadb.PersistentClient(
+                self.session_state['chroma_client'] = chromadb.PersistentClient(
                     path=persist_dir,
                     settings=ChromaSettings(
                         anonymized_telemetry=False,
@@ -104,8 +115,7 @@ class RAGManager:
                 )
             except Exception as e:
                 # Se falhar a abertura (comum em corrupção de índice HNSW)
-                st.error(f"⚠️ Erro ao carregar banco de vetores: {str(e)}")
-                st.info("Tentando recuperar limpando dados corrompidos...")
+                print(f"⚠️ Erro ao carregar banco de vetores: {str(e)}")
                 
                 # Tenta limpar a pasta e reinicializar
                 try:
@@ -113,38 +123,37 @@ class RAGManager:
                         shutil.rmtree(persist_dir)
                     os.makedirs(persist_dir, exist_ok=True)
                     
-                    st.session_state['chroma_client'] = chromadb.PersistentClient(
+                    self.session_state['chroma_client'] = chromadb.PersistentClient(
                         path=persist_dir,
                         settings=ChromaSettings(
                             anonymized_telemetry=False,
                             allow_reset=True
                         )
                     )
-                    st.success("✅ Banco de vetores reinicializado com sucesso.")
                 except Exception as recovery_error:
-                    st.error(f"❌ Falha crítica na recuperação: {str(recovery_error)}")
+                    print(f"❌ Falha crítica na recuperação: {str(recovery_error)}")
                     # Fallback para cliente em memória se falhar feio
-                    st.session_state['chroma_client'] = chromadb.Client(
+                    self.session_state['chroma_client'] = chromadb.Client(
                         settings=ChromaSettings(anonymized_telemetry=False)
                     )
 
-        self.chroma_client = st.session_state['chroma_client']
+        self.chroma_client = self.session_state['chroma_client']
 
         
         # Vector store
-        if 'vector_store' not in st.session_state:
-            st.session_state['vector_store'] = None
-        self.vector_store = st.session_state['vector_store']
+        if 'vector_store' not in self.session_state:
+            self.session_state['vector_store'] = None
+        self.vector_store = self.session_state['vector_store']
 
     @property
     def is_initialized(self) -> bool:
         """Verifica se o RAG está inicializado com documentos."""
-        return st.session_state.get('rag_initialized', False)
+        return self.session_state.get('rag_initialized', False)
 
     @property
     def total_chunks(self) -> int:
         """Total de chunks indexados."""
-        return len(st.session_state.get('rag_chunks', []))
+        return len(self.session_state.get('rag_chunks', []))
 
     # ==================== INDEXAÇÃO ====================
 
@@ -169,7 +178,17 @@ class RAGManager:
             self.limpar_indice()
         
         # Pega hashes atuais da UI para sincronização
-        hashes_atuais = set(d[2] for d in documentos)
+        def get_val(obj, attr, index):
+            if isinstance(obj, (list, tuple)):
+                return obj[index]
+            return getattr(obj, attr, None)
+
+        def get_conteudo(obj):
+            if hasattr(obj, 'get_conteudo'):
+                return obj.get_conteudo()
+            return get_val(obj, 'conteudo', 1)
+
+        hashes_atuais = set(get_val(d, 'hash', 2) for d in documentos)
         
         # Pega coleção atual para verificar hashes
         try:
@@ -197,7 +216,11 @@ class RAGManager:
         total_docs = len(documentos)
         docs_skipped = 0
         
-        for i, (nome, conteudo, doc_hash) in enumerate(documentos):
+        for i, d in enumerate(documentos):
+            nome = get_val(d, 'nome', 0)
+            conteudo = get_conteudo(d)
+            doc_hash = get_val(d, 'hash', 2)
+            
             if progress_callback:
                 progress_callback((i + 1) / (total_docs + 1), f"Processando {nome}...")
             
@@ -240,19 +263,19 @@ class RAGManager:
             )
             
             # Atualiza session state com os chunks carregados
-            st.session_state['rag_chunks'] = todos_chunks
-            st.session_state['vector_store'] = self.vector_store
-            st.session_state['rag_initialized'] = True
+            self.session_state['rag_chunks'] = todos_chunks
+            self.session_state['vector_store'] = self.vector_store
+            self.session_state['rag_initialized'] = True
             
             if progress_callback:
                 progress_callback(1.0, "Documentos sincronizados com sucesso.")
             
-            return {
-                'total_chunks': len(todos_chunks),
-                'documentos_indexados': len(set(c.documento_origem for c in todos_chunks)),
-                'documentos_pulpados': docs_skipped,
-                'novos_documentos': 0
-            }
+            stats = self.text_processor.get_estatisticas(todos_chunks)
+            stats['documentos_indexados'] = len(set(c.documento_origem for c in todos_chunks))
+            stats['documentos_pulpados'] = docs_skipped
+            stats['novos_documentos'] = 0
+            
+            return stats
         
         if progress_callback:
             progress_callback(0.9, "Atualizando embeddings...")
@@ -269,16 +292,16 @@ class RAGManager:
             )
         
         # Atualiza session state com todos os chunks processados
-        st.session_state['rag_chunks'] = todos_chunks
+        self.session_state['rag_chunks'] = todos_chunks
 
-        st.session_state['vector_store'] = self.vector_store
-        st.session_state['rag_initialized'] = True
+        self.session_state['vector_store'] = self.vector_store
+        self.session_state['rag_initialized'] = True
         
         if progress_callback:
             progress_callback(1.0, "Concluído!")
         
         # Estatísticas
-        chunks_finais = st.session_state['rag_chunks']
+        chunks_finais = self.session_state['rag_chunks']
         stats = self.text_processor.get_estatisticas(chunks_finais)
         stats['documentos_indexados'] = len(set(c.documento_origem for c in chunks_finais))
         stats['documentos_pulpados'] = docs_skipped
@@ -400,14 +423,14 @@ class RAGManager:
         except:
             pass  # Collection pode não existir
         
-        st.session_state['vector_store'] = None
-        st.session_state['rag_chunks'] = []
-        st.session_state['rag_initialized'] = False
+        self.session_state['vector_store'] = None
+        self.session_state['rag_chunks'] = []
+        self.session_state['rag_initialized'] = False
         self.vector_store = None
 
     def get_estatisticas(self) -> dict:
         """Retorna estatísticas do índice atual."""
-        chunks = st.session_state.get('rag_chunks', [])
+        chunks = self.session_state.get('rag_chunks', [])
         return self.text_processor.get_estatisticas(chunks)
 
     def purgar_fisicamente(self):

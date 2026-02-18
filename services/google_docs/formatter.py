@@ -146,4 +146,4 @@ class AcademicFormatter:
 
     def create_section_placeholder(self, section_key: str) -> str:
         """Returns standardized placeholder string."""
-        return f"{{{{#{section_key}#}}}}"
+        return f"{{{{*{section_key}*}}}}"

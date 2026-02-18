@@ -44,3 +44,8 @@ class TestAcademicFormatter:
         citation = {"author": "Silva", "year": "2023"}
         formatted = abnt_formatter.format_citation(citation)
         assert formatted == "(SILVA, 2023)"
+
+    def test_create_section_placeholder(self, abnt_formatter):
+        """Verifica se o placeholder é criado no novo formato {{*KEY*}}."""
+        placeholder = abnt_formatter.create_section_placeholder("INTRODUCAO")
+        assert placeholder == "{{*INTRODUCAO*}}"

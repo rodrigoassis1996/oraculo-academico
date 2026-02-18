@@ -18,58 +18,58 @@ def mock_mm():
 def test_route_request_calls_llm_with_orchestrator_prompt(mock_mm):
     """Verifica se o route_request usa o prompt do orquestrador inicialmente."""
     mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content="ORCHESTRATOR")
     
     class MockChunk:
         def __init__(self, content): self.content = content
         def __str__(self): return self.content
 
-    with patch('streamlit.session_state', {'llm': mock_llm}):
-        agent = OrchestratorAgent(mock_mm)
-        with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_template_factory:
-            mock_template = MagicMock()
-            mock_template_factory.return_value = mock_template
-            mock_chain = MagicMock()
-            mock_template.__or__.return_value = mock_chain
-            mock_chain.stream.return_value = [MockChunk("Maestro resp")]
+    mock_mm.session_state = {'llm': mock_llm, 'agente_ativo': 'ORCHESTRATOR'}
+    agent = OrchestratorAgent(mock_mm)
+    with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_template_factory:
+        mock_template = MagicMock()
+        mock_template_factory.return_value = mock_template
+        mock_chain = MagicMock()
+        mock_template.__or__.return_value = mock_chain
+        mock_chain.stream.return_value = [MockChunk("Maestro resp")]
             
-            # Força o classificador a retornar ORCHESTRATOR para este teste
-            with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
-                gen = agent.route_request("Oi")
-                "".join([str(chunk) for chunk in gen])
-                
-                # Verifica se o template foi criado com o prompt do Orquestrador
-                args, kwargs = mock_template_factory.call_args
-                assert args[0][0][1] == ORCHESTRATOR_SYSTEM_PROMPT
+    # Força o classificador a retornar ORCHESTRATOR para este teste
+    with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
+        gen = agent.route_request("Oi")
+        "".join([str(chunk) for chunk in gen])
+        
+        # Verifica se o template foi criado com o prompt do Orquestrador
+        args, kwargs = mock_template_factory.call_args
+        assert args[0][0][1] == ORCHESTRATOR_SYSTEM_PROMPT
 
 def test_state_transition_to_writing(mock_mm):
     """Verifica se o estado muda para ESTRUTURADOR quando a intenção é escrita."""
     mock_llm = MagicMock()
     mock_llm.invoke.return_value = MagicMock(content="ESCRITA")
     
-    with patch('streamlit.session_state', {'llm': mock_llm, 'agente_ativo': 'ORCHESTRATOR'}):
-        agent = OrchestratorAgent(mock_mm)
-        agent.classificar_e_atualizar_estado("Quero um artigo")
-        import streamlit as st
-        assert st.session_state['agente_ativo'] == 'ESTRUTURADOR'
+    mock_mm.session_state = {'llm': mock_llm, 'agente_ativo': 'ORCHESTRATOR'}
+    agent = OrchestratorAgent(mock_mm)
+    agent.classificar_e_atualizar_estado("Quero um artigo")
+    assert mock_mm.session_state['agente_ativo'] == 'ESTRUTURADOR'
 
 def test_prompt_selection_after_transition(mock_mm):
     """Verifica se o prompt do Estruturador é usado após a transição."""
     mock_llm = MagicMock()
-    
-    with patch('streamlit.session_state', {'llm': mock_llm, 'agente_ativo': 'ESTRUTURADOR'}):
-        agent = OrchestratorAgent(mock_mm)
-        with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_template_factory:
-            mock_template = MagicMock()
-            mock_template_factory.return_value = mock_template
-            mock_chain = MagicMock()
-            mock_template.__or__.return_value = mock_chain
-            mock_chain.stream.return_value = []
+    mock_llm.invoke.return_value = MagicMock(content="ESCRITA")
+    mock_mm.session_state = {'llm': mock_llm, 'agente_ativo': 'ESTRUTURADOR', 'documentos': ['doc1']}
+    agent = OrchestratorAgent(mock_mm)
+    with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_template_factory:
+        mock_template = MagicMock()
+        mock_template_factory.return_value = mock_template
+        mock_chain = MagicMock()
+        mock_template.__or__.return_value = mock_chain
+        mock_chain.stream.return_value = []
             
-            with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
-                list(agent.route_request("Como estruturar?"))
-                
-                args, kwargs = mock_template_factory.call_args
-                assert args[0][0][1] == ESTRUTURADOR_SYSTEM_PROMPT
+    with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
+        list(agent.route_request("Como estruturar?"))
+        
+        args, kwargs = mock_template_factory.call_args
+        assert args[0][0][1] == ESTRUTURADOR_SYSTEM_PROMPT
 
 def test_is_global_query_detection(mock_mm):
     """Verifica a lógica de detecção de perguntas globais."""
