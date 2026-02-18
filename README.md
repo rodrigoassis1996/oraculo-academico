@@ -33,7 +33,7 @@ graph TD
     F -->|Sim| G[Sistema Google Docs ABNT]
     F -->|Ajustar| D
     
-    G -->|Escrita de Seção| H[Persistência via {{*KEY*}}]
+    G -->|Escrita de Seção| H["Persistência via {{*KEY*}}"]
     H -->|Refinamento Contextual| D
     
     E -->|Resposta Baseada em Dados| A
