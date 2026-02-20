@@ -70,29 +70,51 @@ O Oráculo Acadêmico é organizado em camadas para facilitar a manutenção e e
 
 ---
 
-## 🚀 Como Executar
-
-### Pré-requisitos
+## 📋 Pré-requisitos
 - Python 3.11+ e Node.js 18+
 - Chave de API OpenAI (em `.env`)
 - Google Cloud: Arquivo `credentials.json` na raiz do projeto.
 
-### Instalação Simplificada
+---
 
-1.  **Backend**:
-    ```bash
-    python -m venv .venv
-    .\.venv\Scripts\activate
-    pip install -r requirements.txt
-    python -m uvicorn main_api:app --reload
-    ```
+## 🚀 Início Rápido
 
-2.  **Frontend**:
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
+### 1. Configuração Inicial (Apenas uma vez)
+Configure o ambiente e instale as dependências necessárias.
+
+**Backend**:
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Frontend**:
+```bash
+cd frontend
+npm install
+```
+
+---
+
+### 2. Como Executar (Uso Diário)
+Para iniciar a aplicação completa, você precisa rodar o Backend e o Frontend simultaneamente.
+
+**Passo 1: Iniciar o Backend (FastAPI)**
+Em um terminal na raiz do projeto:
+```bash
+.\.venv\Scripts\activate
+python -m uvicorn main_api:app --reload
+```
+> O servidor estará disponível em: `http://localhost:8000`
+
+**Passo 2: Iniciar o Frontend (React + Vite)**
+Em **outro terminal**, acesse a pasta frontend:
+```bash
+cd frontend
+npm run dev
+```
+> Acesse a interface em: `http://localhost:5173`
 
 ---
 
