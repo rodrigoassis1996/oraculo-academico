@@ -21,23 +21,24 @@ O **Oráculo Acadêmico** evoluiu de uma ferramenta experimental para um ecossis
 
 ## 🤖 Fluxo de IA e Roteamento
 
-O sistema utiliza um fluxo de trabalho orquestrado para permitir uma co-autoria fluida entre o pesquisador e a IA.
+O Oráculo utiliza uma arquitetura de agentes onde cada um possui uma responsabilidade clara, coordenada pelo **Orquestrador Central**.
 
 ```mermaid
 graph TD
     A[Usuário] -->|Input| B(Orquestrador / Maestro)
     B -->|Triagem Inteligente| C{Intenção?}
     
-    C -->|Escrever Artigo| D[Agente Estruturador]
+    C -->|Escrever/Estruturar| D[Agente Estruturador]
     C -->|Dúvida / Análise| E[Agente QA / Consulta]
     
     D -->|Proposta de Sumário| F{Aprovação Estrutura?}
-    F -->|Sim| G[Criação Documento Esqueleto]
     F -->|Ajustar| D
     
-    G -->|Geração Seção X| H{Aprovação Conteúdo?}
-    H -->|Sim| I[Escrita no Google Docs]
-    H -->|Ajustar| D
+    F -->|Sim| G[Processo de Escrita - Orquestrador]
+    G -->|Geração de Conteúdo| H{Aprovação Conteúdo?}
+    
+    H -->|Aprovar| I[Persistência Google Docs]
+    H -->|Ajustar| G
     
     I -->|Próxima Seção| G
     
@@ -46,16 +47,21 @@ graph TD
 
 ---
 
-## 🏗️ Estrutura do Projeto
+## 🏗️ Estrutura do Projeto e Agentes
 
-O Oráculo Acadêmico é organizado em camadas para facilitar a manutenção e escalabilidade:
+O ecossistema é dividido em competências específicas:
+
+### 🧠 Cérebro (Agentes)
+- **Orquestrador (Maestro)**: O coração do sistema. Gerencia o estado da sessão, realiza a triagem de intenções, **coordena o loop de escrita das seções** e faz a ponte final com a API do Google Docs.
+- **Agente Estruturador**: Especialista em semântica acadêmica. Responsável por analisar o tema do usuário e propor um sumário/esqueleto coerente e fundamentado.
+- **Agente QA (Consulta)**: Focado em extração de informação. Utiliza RAG para responder dúvidas específicas baseadas estritamente nos documentos carregados.
 
 ### 🐍 Backend (Python 3.11 + FastAPI)
-- `agents/`: Motor do Orquestrador e definição de especialistas (Persona Acadêmica).
+- `agents/`: Implementação da lógica dos agentes e personas.
 - `services/`: 
-    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente OAuth resiliente.
-    - `rag_manager.py`: Motor vetorial (ChromaDB) com suporte a auto-recuperação.
-- `main_api.py`: API RESTful com suporte a Streaming e gestão de sessões.
+    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente OAuth.
+    - `rag_manager.py`: Indexação e busca vetorial com ChromaDB.
+- `main_api.py`: Exposição de regras de negócio via API REST.
 
 ### ⚛️ Frontend (React 19 + TypeScript)
 - Localizado em `frontend/`.
