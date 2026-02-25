@@ -65,8 +65,12 @@ class AcademicFormatter:
                     "location": {"index": index},
                     "text": f"{content}\n"
                 }
-            },
-            {
+            }
+        ]
+        
+        # Só aplica estilo de texto se houver conteúdo
+        if content:
+            requests.append({
                 "updateTextStyle": {
                     "range": {
                         "startIndex": index,
@@ -79,23 +83,24 @@ class AcademicFormatter:
                     },
                     "fields": "weightedFontFamily,fontSize,bold"
                 }
-            },
-            {
-                "updateParagraphStyle": {
-                    "range": {
-                        "startIndex": index,
-                        "endIndex": index + len(content)
-                    },
-                    "paragraphStyle": {
-                        "alignment": alignment,
-                        "namedStyleType": f"HEADING_{max(1, level)}", # Google doesn't have HEADING_0
-                        "spaceAbove": {"magnitude": 12 if level > 0 else 24, "unit": "PT"},
-                        "spaceBelow": {"magnitude": 12, "unit": "PT"}
-                    },
-                    "fields": "alignment,namedStyleType,spaceAbove,spaceBelow"
-                }
+            })
+            
+        # Parágrafo deve incluir o newline (\n) para não ser range vazio
+        requests.append({
+            "updateParagraphStyle": {
+                "range": {
+                    "startIndex": index,
+                    "endIndex": index + len(content) + 1
+                },
+                "paragraphStyle": {
+                    "alignment": alignment,
+                    "namedStyleType": f"HEADING_{max(1, level)}", # Google doesn't have HEADING_0
+                    "spaceAbove": {"magnitude": 12 if level > 0 else 24, "unit": "PT"},
+                    "spaceBelow": {"magnitude": 12, "unit": "PT"}
+                },
+                "fields": "alignment,namedStyleType,spaceAbove,spaceBelow"
             }
-        ]
+        })
         return requests
     def format_paragraph(self, text: str, index: int) -> List[Dict[str, Any]]:
         """Returns requests for a formatted paragraph at a specific index."""
@@ -105,8 +110,11 @@ class AcademicFormatter:
                     "location": {"index": index},
                     "text": f"{text}\n"
                 }
-            },
-            {
+            }
+        ]
+        
+        if text:
+            requests.append({
                 "updateTextStyle": {
                     "range": {
                         "startIndex": index,
@@ -118,22 +126,22 @@ class AcademicFormatter:
                     },
                     "fields": "weightedFontFamily,fontSize"
                 }
-            },
-            {
-                "updateParagraphStyle": {
-                    "range": {
-                        "startIndex": index,
-                        "endIndex": index + len(text)
-                    },
-                    "paragraphStyle": {
-                        "alignment": self.config["alignment"],
-                        "lineSpacing": self.config["line_spacing"] * 100, # Google Docs uses percentage for line spacing
-                        "indentFirstLine": {"magnitude": 35.4, "unit": "PT"} # ~1.25cm indent
-                    },
-                    "fields": "alignment,lineSpacing,indentFirstLine"
-                }
+            })
+            
+        requests.append({
+            "updateParagraphStyle": {
+                "range": {
+                    "startIndex": index,
+                    "endIndex": index + len(text) + 1
+                },
+                "paragraphStyle": {
+                    "alignment": self.config["alignment"],
+                    "lineSpacing": self.config["line_spacing"] * 100, # Google Docs uses percentage for line spacing
+                    "indentFirstLine": {"magnitude": 35.4, "unit": "PT"} # ~1.25cm indent
+                },
+                "fields": "alignment,lineSpacing,indentFirstLine"
             }
-        ]
+        })
         return requests
 
     def format_citation(self, citation: Dict[str, Any]) -> str:
@@ -145,5 +153,9 @@ class AcademicFormatter:
         return f"({author}, {year})"
 
     def create_section_placeholder(self, section_key: str) -> str:
-        """Returns standardized placeholder string."""
+        """Retorna uma string de marcador padrão (obsoleto, use markers)."""
         return f"{{{{*{section_key}*}}}}"
+
+    def create_section_markers(self, section_key: str) -> tuple[str, str]:
+        """Retorna os marcadores de início e fim para uma seção específica."""
+        return f"[[START:{section_key}]]", f"[[END:{section_key}]]"

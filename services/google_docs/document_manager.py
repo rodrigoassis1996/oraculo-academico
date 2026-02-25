@@ -36,13 +36,24 @@ class DocumentManager:
         sections = structure.get('secoes', [])
         for section in reversed(sections):
             section_title = section.get('titulo', section['key'])
-            placeholder = self.formatter.create_section_placeholder(section['key'])
+            start_marker, end_marker = self.formatter.create_section_markers(section['key'])
             
-            # Insert Placeholder first (becomes bottom)
-            p_reqs = self.formatter.format_paragraph(f"{placeholder}\n", 1)
-            all_requests.extend(p_reqs)
+            # Insere marcadores e espaços em ordem inversa (da base para o topo)
+            # Resultado final desejado: HEADING \n [[START]] \n \n [[END]]
             
-            # Insert Header at index 1 (pushes placeholder down)
+            # 1. Marcador de Fim (fica embaixo)
+            p_end = self.formatter.format_paragraph(f"{end_marker}\n", 1)
+            all_requests.extend(p_end)
+            
+            # 2. Espaço vazio para conteúdo (no meio)
+            p_empty = self.formatter.format_paragraph("", 1)
+            all_requests.extend(p_empty)
+            
+            # 3. Marcador de Início (fica em cima do conteúdo)
+            p_start = self.formatter.format_paragraph(f"{start_marker}", 1)
+            all_requests.extend(p_start)
+            
+            # 4. Título da Seção (no index 1, empurra tudo para baixo)
             header_reqs = self.formatter.format_heading(section_title, level=1, index=1)
             all_requests.extend(header_reqs)
 
@@ -66,45 +77,47 @@ class DocumentManager:
         """
         import re
         
-        placeholder = self.formatter.create_section_placeholder(section_key)
-        matches = self.client.find_text(doc_id, placeholder)
+        start_marker, end_marker = self.formatter.create_section_markers(section_key)
+        start_matches = self.client.find_text(doc_id, start_marker)
+        end_matches = self.client.find_text(doc_id, end_marker)
         
-        candidate_ranges = []
-        
-        if matches:
-            candidate_ranges.append(matches[0])
+        if start_matches and end_matches:
+            # Ponto de inserção é após o marcador de início
+            # O conteúdo a deletar é entre o fim do START e o início do END
+            start_pos = start_matches[0][1] # Fim do [[START:KEY]]
+            end_pos = end_matches[0][0]     # Início do [[END:KEY]]
             
-        if title_hint:
-            # Check by Title as well to catch duplicates/existing content
-            print(f"[DOCS MANAGER] Verificando existência por título: '{title_hint}'")
-            ranges = self.client.find_section_ranges_by_title(doc_id, title_hint)
-            if ranges:
-                print(f"[DOCS MANAGER] Encontrados {len(ranges)} ranges via título.")
-                candidate_ranges.extend(ranges)
-            else:
-                print(f"[DOCS MANAGER] Nenhum range encontrado via título.")
-                
-        if not candidate_ranges:
-            raise APIError(f"Não foi possível localizar a seção. Placeholder {placeholder} não encontrado e título '{title_hint}' não localizado.")
+            print(f"[DOCS MANAGER] Usando marcadores: {start_pos} até {end_pos}")
+            merged_ranges = [(start_pos, end_pos)]
+        else:
+            # Fallback para o sistema antigo de placeholder ou título (retrocompatibilidade)
+            print(f"[DOCS MANAGER] Marcadores não encontrados para {section_key}. Usando fallback.")
+            placeholder = self.formatter.create_section_placeholder(section_key)
+            matches = self.client.find_text(doc_id, placeholder)
+            candidate_ranges = []
+            if matches: candidate_ranges.append(matches[0])
+            if title_hint:
+                ranges = self.client.find_section_ranges_by_title(doc_id, title_hint)
+                if ranges: candidate_ranges.extend(ranges)
+            
+            if not candidate_ranges:
+                raise APIError(f"Não foi possível localizar a seção. Marcadores ou placeholder {placeholder} não encontrados.")
 
-        # Merge Overlapping Ranges to avoid index errors during deletion
-        # Sort by start index
-        candidate_ranges.sort(key=lambda x: x[0])
-        
-        merged_ranges = []
-        if candidate_ranges:
-            curr_start, curr_end = candidate_ranges[0]
-            for i in range(1, len(candidate_ranges)):
-                next_start, next_end = candidate_ranges[i]
-                if next_start <= curr_end:  # Overlap or Adjacent
-                    curr_end = max(curr_end, next_end)
-                else:
-                    merged_ranges.append((curr_start, curr_end))
-                    curr_start, curr_end = next_start, next_end
-            merged_ranges.append((curr_start, curr_end))
-            
-        # Insertion point is the start of the first merged range (topmost)
-        start = merged_ranges[0][0]
+            candidate_ranges.sort(key=lambda x: x[0])
+            merged_ranges = []
+            if candidate_ranges:
+                curr_start, curr_end = candidate_ranges[0]
+                for i in range(1, len(candidate_ranges)):
+                    next_start, next_end = candidate_ranges[i]
+                    if next_start <= curr_end: curr_end = max(curr_end, next_end)
+                    else:
+                        merged_ranges.append((curr_start, curr_end))
+                        curr_start, curr_end = next_start, next_end
+                merged_ranges.append((curr_start, curr_end))
+            start_pos = merged_ranges[0][0]
+
+        # Inserção começa no start_pos definido acima
+        start = start_pos
         
         if mode == "replace":
             # Remove all merged ranges in REVERSE order
@@ -168,22 +181,18 @@ class DocumentManager:
         full_doc = self.client.get_document(doc_id)
         full_text = self.get_full_content(doc_id)
         
-        placeholder = self.formatter.create_section_placeholder(section_key)
-        start_idx = full_text.find(placeholder)
+        start_marker, end_marker = self.formatter.create_section_markers(section_key)
+        full_text = self.get_full_content(doc_id)
+        
+        start_idx = full_text.find(start_marker)
         if start_idx == -1:
             return ""
             
-        # Find next placeholder
-        import re
-        # Busca por {{*KEY*}}
-        next_matches = list(re.finditer(r'\{\{\*.*?\*\}\}', full_text[start_idx + len(placeholder):]))
-        
-        if next_matches:
-            end_idx = start_idx + len(placeholder) + next_matches[0].start()
-        else:
+        end_idx = full_text.find(end_marker, start_idx)
+        if end_idx == -1:
             end_idx = len(full_text)
             
-        return full_text[start_idx + len(placeholder):end_idx].strip()
+        return full_text[start_idx + len(start_marker):end_idx].strip()
 
     def get_full_content(self, doc_id: str) -> str:
         """Returns entire document as plain text."""
@@ -200,13 +209,24 @@ class DocumentManager:
         """
         Removes all remaining placeholders.
         """
-        full_text = self.get_full_content(doc_id)
-        # Find all patterns like {{*...*}}
+        # Find all section markers [[START:...]] and [[END:...]]
         import re
-        placeholders = re.findall(r'\{\{\*.*?\*\}\}', full_text)
+        patterns = [r'\[\[START:.*?\]\]', r'\[\[END:.*?\]\]', r'\{\{\*.*?\*\}\}']
         
-        for p in placeholders:
-            matches = self.client.find_text(doc_id, p)
-            if matches:
-                start, end = matches[0]
-                self.client.delete_range(doc_id, start, end)
+        for pattern in patterns:
+            # We need to find and delete matches until no more are found, 
+            # because deleting shifts the indexes.
+            while True:
+                full_text = self.get_full_content(doc_id)
+                match = re.search(pattern, full_text)
+                if not match:
+                    break
+                
+                # Search for the exact coordinate in the doc structure
+                # finding by text again to get fresh start/end
+                matches = self.client.find_text(doc_id, match.group())
+                if matches:
+                    start, end = matches[0]
+                    self.client.delete_range(doc_id, start, end)
+                else:
+                    break

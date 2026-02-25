@@ -16,6 +16,7 @@ class TestDocumentManager:
     def mock_formatter(self):
         formatter = MagicMock(spec=AcademicFormatter)
         formatter.create_section_placeholder.side_effect = lambda k: f"{{{{*{k}*}}}}"
+        formatter.create_section_markers.side_effect = lambda k: (f"[[START:{k}]]", f"[[END:{k}]]")
         formatter.get_document_style_requests.return_value = [{"updateDocumentStyle": {}}]
         formatter.format_paragraph.side_effect = lambda text, idx: [{"insertText": {"location": {"index": idx}, "text": f"{text}\n"}}]
         formatter.format_heading.side_effect = lambda text, level, index: [{"insertText": {"location": {"index": index}, "text": f"{text}\n"}}]
@@ -45,7 +46,12 @@ class TestDocumentManager:
 
     def test_write_section_replaces_with_multiple_paragraphs(self, doc_manager, mock_client):
         """Content replaces placeholder and handles multiple paragraphs."""
-        mock_client.find_text.return_value = [(10, 20)]
+        # find_text is called first for START/END markers, then for placeholder
+        def find_text_side_effect(doc_id, query):
+            if "[[" in query: return [] # No markers
+            return [(10, 20)] # Found placeholder
+            
+        mock_client.find_text.side_effect = find_text_side_effect
         content = "Parágrafo 1\nParágrafo 2"
         
         doc_manager.write_section("doc123", "INTRO", content, mode="replace")
@@ -55,9 +61,9 @@ class TestDocumentManager:
         assert mock_client.batch_update.called
 
     def test_get_section_content_extraction(self, doc_manager, mock_client):
-        """Correctly extracts content between specific placeholders."""
-        # Content with placeholders
-        content = "Título\n{{*INTRO*}}\nConteúdo da introdução\n{{*CONCL*}}\nFim"
+        """Correctly extracts content between specific markers."""
+        # Content with markers
+        content = "Título\n[[START:INTRO]]Conteúdo da introdução[[END:INTRO]]\nFim"
         # Since get_full_content uses get_document, we mock both
         mock_client.get_document.return_value = {
             'body': {

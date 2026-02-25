@@ -17,7 +17,6 @@ export type Mensagem = {
 export type SessionInfo = {
     session_id: string;
     total_docs: number;
-    agente_ativo: string;
     active_doc_id?: string;
     rag_stats?: {
         total_chunks: number;

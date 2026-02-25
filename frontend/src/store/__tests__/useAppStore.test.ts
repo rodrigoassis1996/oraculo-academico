@@ -11,7 +11,6 @@ describe('useAppStore', () => {
         expect(state.sessionId).toBeNull();
         expect(state.documentos).toEqual([]);
         expect(state.mensagens).toEqual([]);
-        expect(state.agenteAtivo).toBe('ORCHESTRATOR');
     });
 
     it('deve adicionar um documento corretamente', () => {

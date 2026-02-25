@@ -10,7 +10,7 @@ const { Text } = Typography;
 
 export const AgentChatInterface: React.FC = () => {
     const [input, setInput] = useState('');
-    const { mensagens, addMensagem, sessionId, agenteAtivo, setIsLoading, isLoading, isUploading, setAgenteAtivo, setRagStats, setActiveDocId } = useAppStore();
+    const { mensagens, addMensagem, sessionId, setIsLoading, isLoading, isUploading, setRagStats, setActiveDocId } = useAppStore();
     const chatMutation = useChat();
     const { refetch: refreshSession } = useSession(sessionId || undefined);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -33,11 +33,7 @@ export const AgentChatInterface: React.FC = () => {
             const response = await chatMutation.mutateAsync({ sessionId, message: input });
             if (!response || !response.body) throw new Error('No stream returned');
 
-            // Captura o agente ativo do header em tempo real
-            const agenteHeader = response.headers.get('X-Agent-Active');
-            if (agenteHeader) {
-                setAgenteAtivo(agenteHeader);
-            }
+
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -67,7 +63,6 @@ export const AgentChatInterface: React.FC = () => {
             // Refresh session state to get updated agent and RAG stats
             const { data: updatedSession } = await refreshSession();
             if (updatedSession) {
-                setAgenteAtivo(updatedSession.agente_ativo);
                 if (updatedSession.active_doc_id) {
                     setActiveDocId(updatedSession.active_doc_id);
                 }
@@ -120,7 +115,7 @@ export const AgentChatInterface: React.FC = () => {
                                     )}
                                 </Card>
                                 <Text className="text-[10px] text-gray-400 mt-1 px-2">
-                                    {msg.role === 'human' ? 'Você' : `Agente ${agenteAtivo}`}
+                                    {msg.role === 'human' ? 'Você' : 'Oráculo Acadêmico'}
                                 </Text>
                             </div>
                         </div>

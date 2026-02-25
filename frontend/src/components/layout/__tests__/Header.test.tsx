@@ -11,21 +11,21 @@ vi.mock('../../../store/useAppStore', () => ({
 describe('Header Component', () => {
     it('deve renderizar o título do projeto', () => {
         (useAppStore as any).mockReturnValue({
-            agenteAtivo: 'ORCHESTRATOR',
             sessionId: 'test-session',
+            activeDocId: null,
         });
 
         render(<Header />);
         expect(screen.getByText('Oráculo Acadêmico')).toBeDefined();
     });
 
-    it('deve exibir o agente ativo correto', () => {
+    it('deve exibir o ID da sessão', () => {
         (useAppStore as any).mockReturnValue({
-            agenteAtivo: 'ESTRUTURADOR',
-            sessionId: 'test-session',
+            sessionId: 'abcd1234-efgh-5678',
+            activeDocId: null,
         });
 
         render(<Header />);
-        expect(screen.getByText('ESTRUTURADOR')).toBeDefined();
+        expect(screen.getByText('abcd1234')).toBeDefined();
     });
 });

@@ -1,7 +1,7 @@
 # services/rag_manager.py
 """Gerenciador RAG - Embeddings, Vector Store e Retrieval."""
 
-import streamlit as st
+
 import os
 import shutil
 from typing import List, Optional
@@ -11,7 +11,10 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 
 from services.text_processor import TextProcessor, TextChunk, ChunkConfig
@@ -34,9 +37,7 @@ class RAGManager:
     def __init__(self, config: RAGConfig = None, session_state: dict = None):
         from config.settings import RAG_CONFIG
         self.config = config or RAG_CONFIG
-        # Se um estado externo for passado (FastAPI), usa ele.
-        # Caso contrário, tenta usar o do Streamlit se disponível.
-        self._external_state = session_state
+        self._external_state = session_state if session_state is not None else {}
         
         self.text_processor = TextProcessor(
             ChunkConfig(
@@ -51,10 +52,8 @@ class RAGManager:
 
     @property
     def session_state(self):
-        """Retorna o estado da sessão atual (Dict ou st.session_state)."""
-        if self._external_state is not None:
-            return self._external_state
-        return st.session_state
+        """Retorna o estado da sessão atual."""
+        return self._external_state
 
     def _lifecycle_purge(self):
         """Remove arquivos temporários e índices com mais de 48h."""
@@ -120,7 +119,11 @@ class RAGManager:
                 # Tenta limpar a pasta e reinicializar
                 try:
                     if os.path.exists(persist_dir):
-                        shutil.rmtree(persist_dir)
+                        print(f"🧹 Tentando limpar índice corrompido em: {persist_dir}")
+                        # No Windows, arquivos podem estar presos por outros processos.
+                        # Tentamos remover recursivamente.
+                        shutil.rmtree(persist_dir, ignore_errors=True)
+                    
                     os.makedirs(persist_dir, exist_ok=True)
                     
                     self.session_state['chroma_client'] = chromadb.PersistentClient(
@@ -129,6 +132,11 @@ class RAGManager:
                             anonymized_telemetry=False,
                             allow_reset=True
                         )
+                    )
+                except PermissionError:
+                    print("⚠️ Pasta de vetores bloqueada (PermissionError). Usando Fallback em memória.")
+                    self.session_state['chroma_client'] = chromadb.Client(
+                        settings=ChromaSettings(anonymized_telemetry=False)
                     )
                 except Exception as recovery_error:
                     print(f"❌ Falha crítica na recuperação: {str(recovery_error)}")

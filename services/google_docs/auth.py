@@ -1,12 +1,18 @@
 # services/google_docs/auth.py
 
 import os
+import json
+import logging
 from typing import List, Optional
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-from .exceptions import AuthenticationError
+from google.auth.exceptions import RefreshError
+from .exceptions import AuthenticationError, TokenRevokedError
+
+# Configuração de logging especializada para o módulo Docs
+logger = logging.getLogger("google_docs.auth")
 
 class AuthManager:
     """
@@ -38,45 +44,99 @@ class AuthManager:
             return self._credentials
 
         if not os.path.exists(self.credentials_path):
+            logger.error(f"Arquivo de credenciais não encontrado: {self.credentials_path}")
             raise AuthenticationError(f"Arquivo de credenciais não encontrado: {self.credentials_path}")
 
         # Tenta carregar como Service Account primeiro
         try:
-            self._credentials = service_account.Credentials.from_service_account_file(
-                self.credentials_path, scopes=self.scopes
-            )
-            return self._credentials
-        except Exception:
-            # Se falhar, assume que é OAuth 2.0
-            return self._authenticate_oauth()
+            # Verifica se o arquivo parece ser de Service Account (contém project_id)
+            with open(self.credentials_path, 'r') as f:
+                creds_data = json.load(f)
+                if creds_data.get('type') == 'service_account':
+                    self._credentials = service_account.Credentials.from_service_account_file(
+                        self.credentials_path, scopes=self.scopes
+                    )
+                    logger.info("Autenticado via Service Account.")
+                    return self._credentials
+        except Exception as e:
+            logger.debug(f"Falha ao tentar carregar como Service Account: {e}")
+
+        # Se falhar ou não for service account, assume que é OAuth 2.0
+        return self._authenticate_oauth()
 
     def _authenticate_oauth(self) -> Credentials:
-        """Handles OAuth 2.0 flow."""
+        """Handles OAuth 2.0 credentials loading and refreshing."""
         creds = None
         if os.path.exists(self.token_path):
-            creds = Credentials.from_authorized_user_file(self.token_path, self.scopes)
+            try:
+                creds = Credentials.from_authorized_user_file(self.token_path, self.scopes)
+                logger.debug("Token carregado do arquivo.")
+            except Exception as e:
+                logger.warning(f"Erro ao carregar token.json: {e}")
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 try:
+                    logger.info("Token expirado. Tentando refresh...")
                     creds.refresh(Request())
-                except Exception as e:
+                    logger.info("Token renovado com sucesso.")
+                    # Salva o token renovado
+                    with open(self.token_path, 'w') as token:
+                        token.write(creds.to_json())
+                except RefreshError as e:
+                    logger.error(f"Erro ao atualizar token OAuth: {e}")
+                    if "invalid_grant" in str(e).lower():
+                        logger.warning("Token revogado ou inválido (invalid_grant). Limpando token.json.")
+                        self.revoke()
+                        raise TokenRevokedError("O acesso ao Google Docs foi revogado ou expirou. É necessário reautorizar.")
                     raise AuthenticationError(f"Falha ao atualizar token OAuth: {str(e)}")
-            else:
-                try:
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        self.credentials_path, self.scopes
-                    )
-                    creds = flow.run_local_server(port=0)
                 except Exception as e:
-                    raise AuthenticationError(f"Falha no fluxo OAuth 2.0: {str(e)}")
-
-            # Salva o token para a próxima vez
-            with open(self.token_path, 'w') as token:
-                token.write(creds.to_json())
+                    logger.error(f"Erro inesperado no refresh: {e}")
+                    raise AuthenticationError(f"Erro inesperado ao renovar token: {str(e)}")
+            else:
+                logger.warning("Nenhum token válido ou refresh token disponível.")
+                raise TokenRevokedError("Autorização necessária para o Google Docs.")
 
         self._credentials = creds
         return self._credentials
+
+    def get_authorization_url(self, redirect_uri: Optional[str] = None, state: Optional[str] = None) -> str:
+        """Returns the authorization URL for the user to visit."""
+        flow = InstalledAppFlow.from_client_secrets_file(
+            self.credentials_path, self.scopes
+        )
+        if redirect_uri:
+            flow.redirect_uri = redirect_uri
+        
+        auth_url, _ = flow.authorization_url(
+            prompt='consent', 
+            access_type='offline',
+            state=state,
+            include_granted_scopes='true'
+        )
+        return auth_url
+
+    def save_credentials_from_code(self, code: str, redirect_uri: Optional[str] = None) -> Credentials:
+        """Exchanges code for credentials and saves them."""
+        try:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                self.credentials_path, self.scopes
+            )
+            if redirect_uri:
+                flow.redirect_uri = redirect_uri
+            
+            flow.fetch_token(code=code)
+            creds = flow.credentials
+            
+            with open(self.token_path, 'w') as token:
+                token.write(creds.to_json())
+            
+            self._credentials = creds
+            logger.info("Novas credenciais salvas com sucesso após fluxo de código.")
+            return creds
+        except Exception as e:
+            logger.error(f"Erro ao processar código de autorização: {e}")
+            raise AuthenticationError(f"Falha ao processar autorização: {str(e)}")
 
     def revoke(self) -> None:
         """Revokes current credentials (deletes token file)."""

@@ -9,10 +9,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-try:
-    import streamlit as st
-except ImportError:
-    st = None
 
 from fake_useragent import UserAgent
 
@@ -63,12 +59,6 @@ class UploadManager:
         # Estado interno ou externo
         self._internal_docs = []
         self._external_state = external_state
-        
-        # Tenta inicializar com session_state se disponível e nenhum estado externo fornecido
-        if self._external_state is None and st is not None:
-             if 'documentos' not in st.session_state:
-                 st.session_state['documentos'] = []
-             self._external_state = st.session_state['documentos']
 
     @property
     def documentos(self) -> List[DocumentoCarregado]:
@@ -259,19 +249,6 @@ class UploadManager:
         status_msg = "carregado" if not ja_existia else "reutilizado do cache"
         return True, f"✅ '{nome_doc}' {status_msg} ({doc.tamanho_formatado})"
 
-    def carregar_documento(self, tipo: TipoArquivo, arquivo_ou_url, nome: str = None) -> Tuple[bool, str]:
-        """Interface legada para compatibilidade com Streamlit."""
-        if tipo == TipoArquivo.SITE:
-            return self.carregar_documento_url(arquivo_ou_url, nome)
-        
-        # Assume que arquivo_ou_url é um UploadedFile do Streamlit ou objeto similar com .read()
-        try:
-            dados = arquivo_ou_url.read()
-            # Se for UploadedFile, ele tem .name
-            nome_original = nome or getattr(arquivo_ou_url, 'name', 'arquivo_sem_nome')
-            return self.carregar_documento_de_dados(tipo, dados, nome_original)
-        except Exception as e:
-            return False, f"❌ Erro na interface legada: {str(e)}"
 
     def remover_documento(self, doc_id: str) -> bool:
         """Remove documento da lista."""

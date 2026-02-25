@@ -5,9 +5,7 @@ from services.rag_manager import RAGManager, RAGConfig
 @pytest.fixture
 def mock_rag_manager(mocker, mock_embeddings, mock_chroma):
     """Cria instância do RAGManager com mocks."""
-    # Mock do Streamlit session state
-    mocker.patch("streamlit.session_state", {})
-    return RAGManager()
+    return RAGManager(session_state={})
 
 def test_rag_manager_init(mock_rag_manager):
     """Valida inicialização do RAGManager."""

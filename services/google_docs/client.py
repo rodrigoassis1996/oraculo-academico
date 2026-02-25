@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from .auth import AuthManager
-from .exceptions import APIError, DocumentNotFoundError
+from .exceptions import APIError, DocumentNotFoundError, AuthenticationError, TokenRevokedError
 
 class GoogleDocsClient:
     """
@@ -40,6 +40,33 @@ class GoogleDocsClient:
             try:
                 return request.execute()
             except HttpError as e:
+                # 401: Unauthorized/Expired
+                if e.resp.status == 401:
+                    print(f"[GOOGLE API] Token expirado ou inválido (401). Tentando refresh...")
+                    try:
+                        # Força o refresh no auth_manager
+                        self.auth_manager._credentials = None 
+                        creds = self.auth_manager.get_credentials()
+                        
+                        # Reinicializa serviços com novas credenciais
+                        self._docs_service = build('docs', 'v1', credentials=creds)
+                        self._drive_service = build('drive', 'v3', credentials=creds)
+                        
+                        # Reconstrói a request com o novo serviço (se possível)
+                        # Como requests do discovery dependem do serviço, se falhar aqui, 
+                        # o chamador deve recriar a request.
+                        # Mas para a maioria dos casos simples, o request.execute() falha antes.
+                        # Se não conseguirmos reconstruir, deixamos falhar e o orchestrator trata.
+                        if attempt == 0: # Só tenta uma renovação automática por execução
+                             # Infelizmente a 'request' original está associada ao serviço antigo.
+                             # Para retry real de 401, precisaríamos que o chamador passasse uma factory.
+                             # No entanto, em muitos casos, o request.execute() pode funcionar se o 
+                             # transporte for compartilhado. Se não, lançamos erro específico.
+                             raise e
+                        raise e
+                    except Exception as auth_e:
+                        raise auth_e
+
                 if e.resp.status in [429, 503]:
                     if attempt == self.max_retries - 1:
                         raise e
@@ -58,6 +85,8 @@ class GoogleDocsClient:
             req = self.docs_service.documents().create(body=body)
             doc = self._execute_with_retry(req)
             return doc.get('documentId')
+        except (AuthenticationError, TokenRevokedError):
+            raise
         except Exception as e:
             raise APIError(f"Falha ao criar documento: {str(e)}")
 
@@ -66,6 +95,8 @@ class GoogleDocsClient:
         try:
             req = self.docs_service.documents().get(documentId=doc_id)
             return self._execute_with_retry(req)
+        except (AuthenticationError, TokenRevokedError):
+            raise
         except Exception as e:
             if "not found" in str(e).lower():
                 raise DocumentNotFoundError(f"Documento {doc_id} não encontrado.")
@@ -81,6 +112,8 @@ class GoogleDocsClient:
                 documentId=doc_id, body=body
             )
             return self._execute_with_retry(req)
+        except (AuthenticationError, TokenRevokedError):
+            raise
         except Exception as e:
             raise APIError(f"Falha na operação em lote: {str(e)}")
 

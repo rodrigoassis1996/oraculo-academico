@@ -11,11 +11,10 @@ def rag_manager():
     """Fixture para o RAGManager com mocks."""
     with patch('services.rag_manager.HuggingFaceEmbeddings'), \
          patch('services.rag_manager.chromadb.PersistentClient'):
-        return RAGManager()
+        return RAGManager(session_state={})
 
 def test_buscar_em_todos_os_documentos(rag_manager):
     """Verifica se o método busca em cada documento individualmente."""
-    # Mock do chroma_client e do vector_store
     mock_collection = MagicMock()
     mock_collection.get.return_value = {
         'metadatas': [{'source': 'doc1.pdf'}, {'source': 'doc2.pdf'}, {'source': 'doc1.pdf'}]
@@ -28,20 +27,18 @@ def test_buscar_em_todos_os_documentos(rag_manager):
         [Document(page_content="c2", metadata={"source": "doc2.pdf"})]
     ]
     
-    with patch('streamlit.session_state', {'rag_initialized': True}):
-        res = rag_manager.buscar_em_todos_os_documentos("query", k_por_doc=1)
-        
-        assert len(res) == 2
-        assert res[0].page_content == "c1"
-        assert res[1].page_content == "c2"
-        # Verifica se chamou search com filtro para cada source único
-        assert rag_manager.vector_store.similarity_search.call_count == 2
-        
-        # Verifica se os filtros foram aplicados corretamente
-        calls = rag_manager.vector_store.similarity_search.call_args_list
-        filters = [c.kwargs.get('filter') for c in calls]
-        assert {"source": "doc1.pdf"} in filters
-        assert {"source": "doc2.pdf"} in filters
+    rag_manager.session_state['rag_initialized'] = True
+    res = rag_manager.buscar_em_todos_os_documentos("query", k_por_doc=1)
+    
+    assert len(res) == 2
+    assert res[0].page_content == "c1"
+    assert res[1].page_content == "c2"
+    assert rag_manager.vector_store.similarity_search.call_count == 2
+    
+    calls = rag_manager.vector_store.similarity_search.call_args_list
+    filters = [c.kwargs.get('filter') for c in calls]
+    assert {"source": "doc1.pdf"} in filters
+    assert {"source": "doc2.pdf"} in filters
 
 def test_get_contexto_para_prompt_with_cobertura(rag_manager):
     """Verifica se o contexto usa a busca global quando solicitado."""

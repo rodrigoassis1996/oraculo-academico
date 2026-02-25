@@ -8,42 +8,40 @@ O **Oráculo Acadêmico** evoluiu de uma ferramenta experimental para um ecossis
 
 - **Arquitetura Full Stack Moderna**: Backend resiliente em FastAPI e Frontend reativo em React 19.
 - **Cérebro Multiagente (Maestro)**: Um orquestrador inteligente que tria solicitações entre especialistas em **Redação/Estruturação** e **Análise/QA**.
+- **Escrita Iterativa e Inteligente**:
+    - **Aprovação por Seção**: O conteúdo é gerado e revisado seção por seção, garantindo controle total do autor sobre o texto.
+    - **Detecção de Estrutura**: Mapeamento automático de sumários acadêmicos a partir de diálogos naturais.
 - **Integração Nativa Google Docs**:
-    - Persistência automática via placeholders inteligentes (`{{*KEY*}}`).
-    - Fatiamento de seções baseado em cabeçalhos acadêmicos (`###`).
-    - Formatação ABNT nativa automatizada (margens, fontes, espaçamentos).
-- **Garantia de Qualidade (QA)**: Suíte abrangente com **42 testes automatizados** (Backend + Frontend).
-- **Resiliência Industrial**: Protocolos de auto-recuperação para o banco vetorial e rate limiting exponencial para APIs externas.
+    - **Resiliência OAuth 2.0**: Fluxo de auto-recuperação de tokens e reautenticação assistida por link direto no chat.
+    - **Formatação ABNT Nativa**: Aplicação automática de margens, fontes e estilos de parágrafo sem riscos de "ranges vazios".
+- **Garantia de Qualidade (QA)**: Suíte abrangente com **48+ testes automatizados** (Backend + Frontend).
+- **Auto-recuperação de Dados**: Protocolos de limpeza e restauração para o banco vetorial (ChromaDB) em ambientes Windows/Linux.
 
 ---
 
 ## 🤖 Fluxo de IA e Roteamento
 
-O sistema utiliza um fluxo de trabalho orquestrado para garantir precisão e contexto em cada etapa da pesquisa acadêmica.
+O sistema utiliza um fluxo de trabalho orquestrado para permitir uma co-autoria fluida entre o pesquisador e a IA.
 
 ```mermaid
 graph TD
     A[Usuário] -->|Input| B(Orquestrador / Maestro)
     B -->|Triagem Inteligente| C{Intenção?}
     
-    C -->|Produzir / Editar| D[Agente Estruturador]
+    C -->|Escrever Artigo| D[Agente Estruturador]
     C -->|Dúvida / Análise| E[Agente QA / Consulta]
     
-    D -->|Proposta de Estrutura| F{Aprovação?}
-    F -->|Sim| G[Sistema Google Docs ABNT]
+    D -->|Proposta de Sumário| F{Aprovação Estrutura?}
+    F -->|Sim| G[Criação Documento Esqueleto]
     F -->|Ajustar| D
     
-    G -->|Escrita de Seção| H["Persistência via {{*KEY*}}"]
-    H -->|Refinamento Contextual| D
+    G -->|Geração Seção X| H{Aprovação Conteúdo?}
+    H -->|Sim| I[Escrita no Google Docs]
+    H -->|Ajustar| D
     
-    E -->|Resposta Baseada em Dados| A
+    I -->|Próxima Seção| G
     
-    subgraph "Camada de Conhecimento"
-        R[RAG Global & Local]
-    end
-    
-    D --> R
-    E --> R
+    E -->|Resposta Baseada no RAG| A
 ```
 
 ---
@@ -53,20 +51,20 @@ graph TD
 O Oráculo Acadêmico é organizado em camadas para facilitar a manutenção e escalabilidade:
 
 ### 🐍 Backend (Python 3.11 + FastAPI)
-- `agents/`: Definições de personas, prompts e o motor do Orquestrador.
+- `agents/`: Motor do Orquestrador e definição de especialistas (Persona Acadêmica).
 - `services/`: 
-    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente resiliente.
-    - `rag/`: Motor vetorial (ChromaDB) com suporte a auto-recuperação.
-- `main_api.py`: API RESTful com suporte a Streaming de IA e gestão de sessões.
+    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente OAuth resiliente.
+    - `rag_manager.py`: Motor vetorial (ChromaDB) com suporte a auto-recuperação.
+- `main_api.py`: API RESTful com suporte a Streaming e gestão de sessões.
 
 ### ⚛️ Frontend (React 19 + TypeScript)
 - Localizado em `frontend/`.
 - UI moderna e reativa utilizando **TailwindCSS** e **Ant Design**.
-- Gestão de estado global com **Zustand** e query handling com **TanStack Query**.
+- Comunicação em tempo real para streaming de respostas.
 
 ### 🧪 QA & Testes (Pytest + Vitest)
-- `tests/`: 36 testes de backend (unitários e integração).
-- `frontend/src/__tests__/`: 6 testes de frontend (fluxo de chat e store).
+- `tests/`: Testes unitários, de integração e E2E (Foco em Resiliência e Documentos).
+- `frontend/src/__tests__/`: Testes de componentes e gestão de estado.
 
 ---
 
@@ -79,7 +77,7 @@ O Oráculo Acadêmico é organizado em camadas para facilitar a manutenção e e
 
 ## 🚀 Início Rápido
 
-### 1. Configuração Inicial (Apenas uma vez)
+### 1. Configuração Inicial
 Configure o ambiente e instale as dependências necessárias.
 
 **Backend**:
@@ -97,41 +95,36 @@ npm install
 
 ---
 
-### 2. Como Executar (Uso Diário)
-Para iniciar a aplicação completa, você precisa rodar o Backend e o Frontend simultaneamente.
+### 2. Execução (Uso Diário)
 
 **Passo 1: Iniciar o Backend (FastAPI)**
-Em um terminal na raiz do projeto:
 ```bash
 .\.venv\Scripts\activate
 python -m uvicorn main_api:app --reload
 ```
-> O servidor estará disponível em: `http://localhost:8000`
 
 **Passo 2: Iniciar o Frontend (React + Vite)**
-Em **outro terminal**, acesse a pasta frontend:
 ```bash
 cd frontend
 npm run dev
 ```
-> Acesse a interface em: `http://localhost:5173`
+> Acesse: `http://localhost:5173`
 
 ---
 
 ## 🧪 Suíte de Validação
 
-Para garantir que cada alteração seja segura, execute os testes:
+Para garantir a estabilidade do sistema:
 
 ```bash
 # Rodar todos os testes de backend
 pytest tests/
 
-# Rodar testes de frontend
-cd frontend
-npm test
+# Rodar testes específicos de resiliência
+pytest tests/unit/test_google_oauth_resilience.py
 ```
 
-**Atualmente: 42/42 testes passando com 100% de sucesso.**
+**Status Atual: Todos os testes passando com foco em estabilidade operacional.**
 
 ---
 

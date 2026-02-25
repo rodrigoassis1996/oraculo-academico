@@ -5,7 +5,7 @@ interface AppState {
     sessionId: string | null;
     documentos: Documento[];
     mensagens: Mensagem[];
-    agenteAtivo: string;
+
     activeDocId: string | null;
     ragStats: SessionInfo['rag_stats'] | null;
     isLoading: boolean;
@@ -19,7 +19,7 @@ interface AppState {
     removeDocumento: (docId: string) => void;
     setMensagens: (messages: Mensagem[]) => void;
     addMensagem: (message: Mensagem) => void;
-    setAgenteAtivo: (agente: string) => void;
+
     setActiveDocId: (id: string | null) => void;
     setRagStats: (stats: SessionInfo['rag_stats'] | null) => void;
     setIsLoading: (loading: boolean) => void;
@@ -32,7 +32,7 @@ export const useAppStore = create<AppState>((set) => ({
     sessionId: null,
     documentos: [],
     mensagens: [],
-    agenteAtivo: 'ORCHESTRATOR',
+
     activeDocId: null,
     ragStats: null,
     isLoading: false,
@@ -47,7 +47,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
     setMensagens: (messages) => set({ mensagens: messages }),
     addMensagem: (message) => set((state) => ({ mensagens: [...state.mensagens, message] })),
-    setAgenteAtivo: (agente) => set({ agenteAtivo: agente }),
+
     setActiveDocId: (id) => set({ activeDocId: id }),
     setRagStats: (stats) => set({ ragStats: stats }),
     setIsLoading: (loading) => set({ isLoading: loading }),
@@ -61,7 +61,7 @@ export const useAppStore = create<AppState>((set) => ({
         sessionId: null,
         documentos: [],
         mensagens: [],
-        agenteAtivo: 'ORCHESTRATOR',
+
         activeDocId: null,
         ragStats: null,
         isLoading: false,

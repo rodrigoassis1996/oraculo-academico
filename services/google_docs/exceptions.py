@@ -8,6 +8,10 @@ class AuthenticationError(GoogleDocsError):
     """Raised when authentication fails."""
     pass
 
+class TokenRevokedError(AuthenticationError):
+    """Raised when the OAuth token has been revoked or is invalid (invalid_grant)."""
+    pass
+
 class DocumentNotFoundError(GoogleDocsError):
     """Raised when a document is not found."""
     pass

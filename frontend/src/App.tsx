@@ -8,7 +8,7 @@ import { AgentChatInterface } from './components/features/Chat';
 import { BriefingWizard } from './components/features/BriefingWizard';
 
 function AppContent() {
-  const { sessionId, setSessionId, setAgenteAtivo, setRagStats, documentos, setActiveDocId } = useAppStore();
+  const { sessionId, setSessionId, setRagStats, documentos, setActiveDocId } = useAppStore();
   const [showWizard, setShowWizard] = useState(false);
 
   // Inicializa sessão se não houver
@@ -19,7 +19,6 @@ function AppContent() {
       setSessionId(sessionData.session_id);
     }
     if (sessionData) {
-      setAgenteAtivo(sessionData.agente_ativo);
       if (sessionData.active_doc_id) {
         setActiveDocId(sessionData.active_doc_id);
       }
@@ -27,7 +26,7 @@ function AppContent() {
         setRagStats(sessionData.rag_stats);
       }
     }
-  }, [sessionData, sessionId, setSessionId, setAgenteAtivo, setRagStats]);
+  }, [sessionData, sessionId, setSessionId, setRagStats]);
 
   if (isLoading) {
     return (

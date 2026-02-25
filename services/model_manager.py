@@ -4,11 +4,6 @@
 from typing import Dict, Any, Optional, List
 import os
 
-try:
-    import streamlit as st
-except ImportError:
-    st = None
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -26,12 +21,8 @@ class ModelManager:
     def __init__(self, session_state: Optional[Dict[str, Any]] = None):
         self.session_state = session_state
         
-        # Se estiver no Streamlit e nenhum estado for passado, usa o session_state do st
-        if self.session_state is None and st is not None:
-            self._init_st_session_state()
-            self.session_state = st.session_state
-        elif self.session_state is None:
-            # Caso contrário, usa um dicionário local para modo standalone/API
+        # Usa o estado passado ou cria um dict standalone
+        if self.session_state is None:
             self.session_state = {
                 'chain': None,
                 'mensagens': [],
@@ -48,26 +39,18 @@ class ModelManager:
             self.rag_manager = RAGManager(session_state=self.session_state)
             self.session_state['_rag_manager'] = self.rag_manager
         
+        self.auth_manager = None
         if '_docs_manager' in self.session_state:
             self.docs_manager = self.session_state['_docs_manager']
+            # Re-expõe auth_manager se o docs_manager existir
+            if self.docs_manager:
+                self.auth_manager = getattr(self.docs_manager.client, 'auth_manager', None)
         else:
             self._init_google_docs()
             self.session_state['_docs_manager'] = self.docs_manager
         
         self.orchestrator = OrchestratorAgent(self, docs_manager=self.docs_manager)
 
-    def _init_st_session_state(self) -> None:
-        """Inicializa keys no session_state do Streamlit."""
-        if 'chain' not in st.session_state:
-            st.session_state['chain'] = None
-        if 'mensagens' not in st.session_state:
-            st.session_state['mensagens'] = []
-        if 'usar_rag' not in st.session_state:
-            st.session_state['usar_rag'] = True
-        if 'llm' not in st.session_state:
-            st.session_state['llm'] = None
-        if 'documentos' not in st.session_state:
-            st.session_state['documentos'] = []
 
     def _init_google_docs(self):
         """Inicializa componentes do Google Docs."""
@@ -75,13 +58,15 @@ class ModelManager:
             cwd = os.getcwd()
             credentials_path = os.path.join(cwd, "credentials.json")
             if os.path.exists(credentials_path):
-                auth = AuthManager(credentials_path)
-                client = GoogleDocsClient(auth)
+                self.auth_manager = AuthManager(credentials_path)
+                client = GoogleDocsClient(self.auth_manager)
                 formatter = AcademicFormatter(style="ABNT")
                 self.docs_manager = DocumentManager(client, formatter)
             else:
+                self.auth_manager = None
                 self.docs_manager = None
         except Exception:
+            self.auth_manager = None
             self.docs_manager = None
 
     @property

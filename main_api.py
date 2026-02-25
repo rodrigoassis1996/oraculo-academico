@@ -19,7 +19,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Agent-Active"],
 )
 
 # Gerenciador de Sessões (Em memória para este exemplo/MVP)
@@ -53,7 +52,6 @@ class ChatResponse(BaseModel):
 class SessionInfo(BaseModel):
     session_id: str
     total_docs: int
-    agente_ativo: str
     active_doc_id: Optional[str] = None
     rag_stats: Optional[Dict[str, Any]] = None
 
@@ -63,8 +61,7 @@ async def create_session():
     state = get_session(session_id)
     return SessionInfo(
         session_id=session_id,
-        total_docs=0,
-        agente_ativo=state['agente_ativo']
+        total_docs=0
     )
 
 @app.get("/api/v1/session/{session_id}", response_model=SessionInfo)
@@ -73,7 +70,6 @@ async def get_session_info(session_id: str):
     return SessionInfo(
         session_id=session_id,
         total_docs=len(state['documentos']),
-        agente_ativo=state['agente_ativo'],
         active_doc_id=state.get('active_doc_id'),
         rag_stats=state.get('rag_stats')
     )
@@ -142,25 +138,15 @@ async def chat(request: ChatRequest):
                 print(f"[API] Erro ao criar chain RAG sob demanda: {e}")
                 return StreamingResponse(
                     iter(["⏳ Os documentos ainda estão sendo processados. Aguarde a conclusão do carregamento e tente novamente."]),
-                    media_type="text/plain",
-                    headers={"X-Agent-Active": "ORCHESTRATOR"}
+                    media_type="text/plain"
                 )
         else:
             return StreamingResponse(
                 iter(["⚠️ Nenhum documento carregado ainda. Por favor, faça o upload de documentos primeiro."]),
-                media_type="text/plain",
-                headers={"X-Agent-Active": "ORCHESTRATOR"}
+                media_type="text/plain"
             )
 
     mm.adicionar_mensagem("human", request.message)
-    
-    # Classifica o agente antes de iniciar o stream para que o frontend saiba quem responde em tempo real
-    try:
-        mm.orchestrator.classificar_e_atualizar_estado(request.message)
-    except Exception as e:
-        print(f"[API] Erro na classificação pré-stream: {e}")
-    
-    agente_ativo = state.get('agente_ativo', 'ORCHESTRATOR')
 
     def stream_response():
         full_reply = ""
@@ -176,9 +162,46 @@ async def chat(request: ChatRequest):
 
     return StreamingResponse(
         stream_response(), 
-        media_type="text/plain",
-        headers={"X-Agent-Active": agente_ativo}
+        media_type="text/plain"
     )
+
+@app.get("/api/v1/auth/google/url")
+async def get_google_auth_url(session_id: str):
+    state_obj = get_session(session_id)
+    mm = ModelManager(session_state=state_obj)
+    if not mm.auth_manager:
+        raise HTTPException(status_code=400, detail="Google Docs não configurado (credentials.json ausente).")
+    
+    # URL de callback absoluta
+    redirect_uri = "http://localhost:8000/api/v1/auth/google/callback"
+    url = mm.auth_manager.get_authorization_url(redirect_uri=redirect_uri, state=session_id)
+    return {"url": url}
+
+@app.get("/api/v1/auth/google/callback")
+async def google_auth_callback(code: str, state: Optional[str] = None, session_id: Optional[str] = None):
+    # Usa o state como session_id se o parâmetro direto não vier (fluxo OAuth padrão)
+    target_session_id = session_id or state
+    if not target_session_id:
+        raise HTTPException(status_code=400, detail="session_id ou state ausente.")
+    
+    session_state = get_session(target_session_id)
+    mm = ModelManager(session_state=session_state)
+    if not mm.auth_manager:
+        raise HTTPException(status_code=400, detail="Google Docs não configurado.")
+    
+    try:
+        redirect_uri = "http://localhost:8000/api/v1/auth/google/callback"
+        mm.auth_manager.save_credentials_from_code(code, redirect_uri=redirect_uri)
+        
+        # Opcional: reiniciar clientes que possam estar em cache no ModelManager
+        mm._init_google_docs()
+        
+        return {
+            "success": True, 
+            "message": "Autorização do Google Docs concluída com sucesso! Você já pode fechar esta aba e voltar ao chat."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar código: {str(e)}")
 
 @app.post("/api/v1/clear")
 async def clear_session(session_id: str):

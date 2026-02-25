@@ -24,12 +24,12 @@ vi.mock('../../api/queries', () => ({
                 })
             },
             headers: {
-                get: (header: string) => header === 'X-Agent-Active' ? 'ESTRUTURADOR' : null
+                get: () => null
             }
         }))
     })),
     useSession: vi.fn(() => ({
-        refetch: vi.fn(() => Promise.resolve({ data: { agente_ativo: 'ESTRUTURADOR' } }))
+        refetch: vi.fn(() => Promise.resolve({ data: { active_doc_id: null } }))
     }))
 }));
 
@@ -40,11 +40,9 @@ describe('Fluxo de Chat do Agente', () => {
             mensagens: [],
             addMensagem: vi.fn(),
             sessionId: 'test-session',
-            agente_ativo: 'QA',
             setIsLoading: vi.fn(),
             isLoading: false,
             isUploading: false,
-            setAgenteAtivo: vi.fn(),
             setRagStats: vi.fn(),
             setActiveDocId: vi.fn()
         });
@@ -68,7 +66,7 @@ describe('Fluxo de Chat do Agente', () => {
         // Verifica se o estado de carregamento foi ativado
         expect(store.setIsLoading).toHaveBeenCalledWith(true);
 
-        // Aguarda a resposta aparecer (aqui precisaríamos de um mock mais detalhado do store para o .getState)
+        // Aguarda a resposta
         await waitFor(() => {
             expect(store.setIsLoading).toHaveBeenLastCalledWith(false);
         });

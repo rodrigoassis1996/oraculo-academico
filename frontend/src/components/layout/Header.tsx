@@ -4,7 +4,7 @@ import { GraduationCap, ExternalLink } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
 export const Header: React.FC = () => {
-    const { agenteAtivo, sessionId, activeDocId } = useAppStore();
+    const { sessionId, activeDocId } = useAppStore();
 
     return (
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 flex items-center justify-between fixed top-0 left-0 right-0 z-[1000] h-16">
@@ -36,19 +36,6 @@ export const Header: React.FC = () => {
                     </a>
                 )}
 
-                <div className="hidden lg:flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
-                        Agente Ativo
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-sm font-semibold text-primary-700">
-                            {agenteAtivo}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="h-8 w-px bg-slate-200 mx-2" />
 
                 <div className="flex flex-col items-end">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">

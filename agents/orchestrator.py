@@ -3,11 +3,9 @@
 
 from typing import Generator, List, Optional
 import os
-
-try:
-    import streamlit as st
-except ImportError:
-    st = None
+import re
+import json
+import traceback
 
 from langchain_core.prompts import ChatPromptTemplate
 from agents.prompts import (
@@ -16,6 +14,7 @@ from agents.prompts import (
     QA_SYSTEM_PROMPT
 )
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from services.google_docs import exceptions as gdocs_exceptions
 
 class OrchestratorAgent:
     """Agente Maestro que orquestra a triagem e delegação para especialistas."""
@@ -32,6 +31,12 @@ class OrchestratorAgent:
             ss['active_doc_id'] = None
         if 'last_active_section' not in ss:
             ss['last_active_section'] = None
+        if 'pending_section' not in ss:
+            ss['pending_section'] = None  # {key, titulo, content} aguardando aprovação
+        if 'sections_queue' not in ss:
+            ss['sections_queue'] = []  # Fila de seções a serem escritas
+        if 'completed_sections' not in ss:
+            ss['completed_sections'] = []  # Seções já aprovadas e escritas
 
     @property
     def llm(self):
@@ -49,17 +54,15 @@ class OrchestratorAgent:
         if self.docs_manager:
             title = structure.get("titulo", "Trabalho Acadêmico")
             print(f"[GOOGLE DOCS] Criando novo documento: {title}")
-            try:
-                doc_id = self.docs_manager.create_academic_document(
-                    title=title,
-                    structure=structure
-                )
-                ss['active_doc_id'] = doc_id
-                ss['current_structure'] = structure # Salva a estrutura ativa para mapeamento dinâmico
-                return doc_id
-            except Exception as e:
-                print(f"[GOOGLE DOCS] Erro ao criar documento: {e}")
-                return None
+            doc_id = self.docs_manager.create_academic_document(
+                title=title,
+                structure=structure
+            )
+            ss['active_doc_id'] = doc_id
+            ss['current_structure'] = structure # Salva a estrutura ativa para mapeamento dinâmico
+            return doc_id
+            
+        print("[GOOGLE DOCS] docs_manager é None! Verifique se credentials.json existe.") # Log when docs_manager is None
         return None
 
     def extrair_estrutura_da_mensagem(self, mensagem_ai: str) -> dict:
@@ -84,7 +87,6 @@ JSON:"""
         # Tenta extrair da mensagem direta
         try:
             res = self.llm.invoke(prompt).content.strip()
-            import json, re
             match = re.search(r'\{.*\}', res, re.DOTALL)
             if match:
                 data = json.loads(match.group())
@@ -92,25 +94,53 @@ JSON:"""
                 if valido:
                     data["secoes"] = valido
                     print(f"[ESTRUTURA] Parser LLM extraiu {len(valido)} seções.")
-                    ss['current_structure'] = data # Atualiza o mapeamento dinâmico
+                    ss['current_structure'] = data
                     return data
+                else:
+                    print(f"[ESTRUTURA] LLM retornou JSON mas sem seções válidas: {res[:200]}")
+            else:
+                print(f"[ESTRUTURA] LLM não retornou JSON válido: {res[:200]}")
         except Exception as e:
-            print(f"[ESTRUTURA] Erro no parsing JSON: {e}")
+            print(f"[ESTRUTURA] Erro no parsing LLM: {e}")
 
-        # Heurística de regex: Busca por ### Nome da Seção
+        # Heurística de regex: Busca por ### Nome da Seção ou 1. Nome da Seção
         print("[ESTRUTURA] Falha no Parser LLM. Tentando heurística de regex...")
-        import re
-        headers = re.findall(r'###\s*(.*)', mensagem_ai)
-        if headers:
-            secoes = []
-            for h in headers:
-                clean = h.split(":")[0].strip()
-                if clean:
-                    secoes.append({"key": clean.upper().replace(" ", "_"), "titulo": clean})
-            if secoes:
-                data = {"titulo": "Trabalho Acadêmico", "secoes": secoes}
-                ss['current_structure'] = data
-                return data
+        secoes = []
+
+        # Divide por linhas para evitar problemas com âncoras ^ em textos complexos
+        linhas = [l.strip() for l in mensagem_ai.splitlines() if l.strip()]
+        
+        for linha in linhas:
+            # Prioridade 1: Headers ### 
+            match_h = re.search(r'#{1,4}\s*(.*)', linha)
+            if match_h:
+                titulo = match_h.group(1).split(":")[0].split("|")[0].strip().replace("*", "")
+                if titulo:
+                    print(f"[DEBUG] Heurística Regex detectou seção (Header): {titulo}")
+                    secoes.append({"key": titulo.upper().replace(" ", "_"), "titulo": titulo})
+                continue
+            
+            # Prioridade 2: Lista Numerada (1., 1), 1.1, 1.1.)
+            match_n = re.search(r'(\d+[\.\d]*)[.\)]?\s+(.*)', linha)
+            if match_n:
+                num_part = match_n.group(1)
+                titulo = match_n.group(2).split(":")[0].split("|")[0].strip().replace("*", "")
+                if titulo:
+                    print(f"[DEBUG] Heurística Regex detectou seção (Lista): {titulo}")
+                    secoes.append({"key": titulo.upper().replace(" ", "_"), "titulo": titulo})
+
+        if secoes:
+            # Remove duplicatas mantendo ordem
+            secoes_unicas = []
+            vistos = set()
+            for s in secoes:
+                if s['key'] not in vistos:
+                    secoes_unicas.append(s)
+                    vistos.add(s['key'])
+            
+            data = {"titulo": "Trabalho Acadêmico", "secoes": secoes_unicas}
+            ss['current_structure'] = data
+            return data
 
         print("[ESTRUTURA] Nenhuma estrutura válida encontrada na mensagem.")
         return None
@@ -123,15 +153,43 @@ JSON:"""
             return True
         return False
 
+    def _get_reauth_message(self) -> str:
+        """Gera uma mensagem amigável com link de reautenticação."""
+        try:
+            if not getattr(self.mm, 'auth_manager', None):
+                return "⚠️ **Sua autorização com o Google Docs expirou ou foi revogada.**\n\n" \
+                       "Não foi possível gerar um link automático. Por favor, reinicie sua sessão ou verifique as credenciais do sistema."
+            
+            # Define a URL de callback (pode precisar de ajuste dependendo do ambiente)
+            redirect_uri = "http://localhost:8000/api/v1/auth/google/callback"
+            session_id = getattr(self.mm, 'session_id', None) or "local-dev"
+            
+            auth_url = self.mm.auth_manager.get_authorization_url(
+                redirect_uri=redirect_uri,
+                state=session_id
+            )
+            # Adiciona o session_id como parâmetro de estado ou similar se a API suportar
+            # Para simplificar agora, apenas indicamos que o usuário deve clicar.
+            return (
+                "⚠️ **Sua autorização com o Google Docs expirou ou foi revogada.**\n\n"
+                "Para continuar, você precisa autorizar o acesso novamente:\n"
+                f"1. [Clique aqui para autorizar o Oráculo]({auth_url})\n"
+                "2. Após autorizar, copie o código exibido e cole-o aqui ou simplesmente tente enviar sua mensagem novamente.\n\n"
+                "*Dica: A nova autorização é válida por tempo indeterminado até que seja revogada.*"
+            )
+        except Exception as e:
+            return f"⚠️ Erro ao gerar link de reautenticação: {str(e)}"
+
     def _is_approval(self, text: str) -> bool:
         """Heurística simples para detectar aprovação."""
-        keywords = ["sim", "aprovo", "ok", "pode", "prossiga", "aceito", "está bom", "tá bom", "manda ver", "com certeza"]
-        text_lower = text.lower().strip()
-        # Match exato ou início
-        if text_lower in keywords:
+        keywords = ["sim", "aprovo", "aprovado", "ok", "pode", "prossiga", "aceito", "está bom", "tá bom", "manda ver", "com certeza", "fechado"]
+        # Remove pontuação comum para facilitar o match
+        text_clean = text.lower().strip().replace(",", "").replace(".", "").replace("!", "")
+        
+        if any(text_clean == k for k in keywords):
             return True
         for k in keywords:
-            if text_lower.startswith(k + " ") or text_lower.startswith(k + "."):
+            if text_clean.startswith(k + " "):
                 return True
         return False
 
@@ -142,28 +200,40 @@ JSON:"""
 
         ss = self.mm.session_state
         
-        # 0. Interceptação de Aprovação de Estrutura
-        if ss.get('agente_ativo') == 'AGUARDANDO_APROVACAO':
-            if self._is_approval(input_usuario):
-                print(f"[ORCHESTRATOR] Aprovação detectada! Criando documento...")
-                current_struct = ss.get('current_structure')
-                if current_struct:
-                    doc_id = self.create_google_doc_from_structure(current_struct)
-                    if doc_id:
-                        link = f"https://docs.google.com/document/d/{doc_id}"
-                        msg_confirmacao = f"✅ **Estrutura Aprovada!**\n\n📄 Documento criado com sucesso: [Abrir no Google Docs]({link})\n\nIniciando a escrita do conteúdo...\n\n---\n\n"
-                        yield msg_confirmacao
-                        # Muda estado para ESTRUTURADOR para o LLM continuar escrevendo
-                        ss['agente_ativo'] = 'ESTRUTURADOR'
-            else:
-                # Se não for aprovação (ex: pedido de ajuste), volta para ESTRUTURADOR para refinar
-                ss['agente_ativo'] = 'ESTRUTURADOR'
-
-        # 1. Classificação de Intenção (Agora centralizada aqui)
-        self.classificar_e_atualizar_estado(input_usuario)
+        # 1. Classificação de Intenção (Centralizada)
+        triage_result = self.classificar_e_atualizar_estado(input_usuario)
+        
+        if triage_result == "ERROR_FAIL_DOC":
+            yield "⚠️ **Atenção**: Não consegui extrair a estrutura proposta ou criar o documento no Google Docs. \n\nPor favor, garanta que a estrutura proposta use títulos claros (###) ou listas numeradas.\n\n---\n\n"
+            return
+        elif triage_result == "AUTH_REVOKED":
+            yield self._get_reauth_message()
+            return
+        elif triage_result == "CONTENT_APPROVED":
+            # Conteúdo da seção foi aprovado e escrito no doc
+            pending = ss.get('pending_section')
+            if pending:
+                yield f"✅ Seção **{pending.get('titulo', '')}** aprovada e salva no Google Docs!\n\n"
+            # Avança para próxima seção
+            yield from self._generate_next_section()
+            return
+        elif triage_result == "CONTENT_REJECTED":
+            # Reescreve a seção corrente
+            yield "🔄 Entendido! Vou reescrever a seção com as suas considerações.\n\n---\n\n"
+            yield from self._rewrite_current_section(input_usuario)
+            return
+        elif triage_result and triage_result not in ("ORCHESTRATOR", "ESCRITA", "CONSULTA", "ESTRUTURADOR", "QA", None):
+            # É um doc_id retornado pela aprovação da estrutura
+            link = f"https://docs.google.com/document/d/{triage_result}"
+            msg_confirmacao = f"✅ **Estrutura Aprovada!**\n\n📄 Documento criado com sucesso: [Abrir no Google Docs]({link})\n\nIniciando a redação do conteúdo...\n\n---\n\n"
+            yield msg_confirmacao
+            # Inicia a escrita da primeira seção automaticamente
+            yield from self._generate_next_section()
+            return
         
         # 2. Seleção do Prompt baseado no Estado Atual
-        agente_atual = self.mm.session_state['agente_ativo']
+        agente_atual = ss.get('agente_ativo', 'ORCHESTRATOR')
+        print(f"[ORCHESTRATOR] Estado atual após triagem: {agente_atual}")
         prompt_sistema = self._get_prompt_por_agente(agente_atual)
         
         # 3. Detecção de Necessidade de Cobertura Total (Global)
@@ -189,8 +259,7 @@ JSON:"""
              label = "CONTEXTO GLOBAL (Todos os docs)" if is_global else "CONTEXTO DOS DOCUMENTOS"
              input_rich = f"{label}:\n{contexto_rag}\n\nSOLICITAÇÃO: {input_usuario}"
 
-        # 5b. Injeção da Estrutura Aprovada no contexto (se existir)
-        ss = self.mm.session_state
+        # 5b. Injeção da Estrutura no contexto para o Estruturador
         current_struct = ss.get('current_structure')
         if current_struct and agente_atual == 'ESTRUTURADOR':
             secoes_str = "\n".join([f"  - {s['key']}: {s['titulo']}" for s in current_struct.get('secoes', [])])
@@ -204,61 +273,16 @@ JSON:"""
             full_response += chunk.content
             yield chunk.content
         
-        # 6. Persistência Automática no Google Docs (se aplicável)
+        # 6. Detecção de estrutura proposta (transição para AGUARDANDO_APROVACAO)
         doc_id = ss.get('active_doc_id')
-        if doc_id and self.docs_manager:
-            import re
-            
-            # 1. TENTA DIVIDIR EM BLOCOS POR HEADERS (Multi-seção)
-            import re
-            valid_blocks = []
-            # Encontra as posições de todos os cabeçalhos que iniciam uma linha com #
-            header_matches = list(re.finditer(r'(?m)^#+.*$', full_response))
-            
-            if header_matches:
-                for i in range(len(header_matches)):
-                    start = header_matches[i].start()
-                    # O bloco termina no início do próximo cabeçalho ou no fim da resposta
-                    end = header_matches[i+1].start() if i+1 < len(header_matches) else len(full_response)
-                    block = full_response[start:end].strip()
-                    if block:
-                        valid_blocks.append(block)
-            
-            # Fallback: Se não encontrou blocos com #, mas a resposta é longa, trata como seção única
-            if not valid_blocks and len(full_response.strip()) > 50:
-                valid_blocks = [full_response.strip()]
-
-            if len(valid_blocks) > 0:
-                print(f"[GOOGLE DOCS] Detectados {len(valid_blocks)} blocos potenciais.")
-                for block in valid_blocks:
-                    # Detecta a chave da seção para este bloco específico
-                    section_key = self._detect_section_key(input_usuario, block)
-                    
-                    if section_key:
-                        try:
-                            clean_content = self._limpar_conteudo_para_doc(block)
-                            
-                            # Tenta pegar o título real da estrutura para o Title Hint
-                            title_hint = None
-                            if current_struct:
-                                for s in current_struct.get('secoes', []):
-                                    if s['key'] == section_key:
-                                        title_hint = s['titulo']
-                                        break
-
-                            print(f"[GOOGLE DOCS] Salvando bloco: {section_key} ({title_hint})")
-                            self.docs_manager.write_section(doc_id, section_key, clean_content, title_hint=title_hint)
-                            ss['last_active_section'] = section_key
-                        except Exception as e:
-                            print(f"Erro ao salvar bloco {section_key}: {e}")
-            else:
-                print("[GOOGLE DOCS] Nenhum bloco de seção detectado na resposta.")
-
-        # Estado: se propusemos estrutura mas não temos doc, aguardamos aprovação
-        if ss['agente_ativo'] == 'ESTRUTURADOR' and not doc_id:
+        if agente_atual in ['ESTRUTURADOR', 'ORCHESTRATOR'] and not doc_id:
+            print(f"[ORCHESTRATOR] Analisando resposta para detectar estrutura... (len={len(full_response)})")
             estrutura = self.extrair_estrutura_da_mensagem(full_response)
             if estrutura:
                 ss['agente_ativo'] = 'AGUARDANDO_APROVACAO'
+                print(f"[ORCHESTRATOR] Estrutura detectada e estado -> AGUARDANDO_APROVACAO")
+            else:
+                print(f"[ORCHESTRATOR] Nenhuma estrutura detectada na resposta da IA.")
 
     def _detect_section_key(self, user_text: str, ai_text: str = "") -> str:
         """Heurística robusta para detectar qual seção está sendo referenciada."""
@@ -280,7 +304,9 @@ JSON:"""
         for s in secoes:
             key_norm = s['key'].upper()
             if key_norm in ai_norm:
-                return s['key']
+                # Verifica se não é apenas parte de outra palavra
+                if re.search(rf'\b{re.escape(key_norm)}\b', ai_norm):
+                    return s['key']
 
         # 2. PRIORIDADE: TÍTULO EXATO COMO HEADER (### Título)
         for s in secoes:
@@ -399,48 +425,263 @@ JSON:"""
             
         return False
 
-    def classificar_e_atualizar_estado(self, input_usuario: str):
-        """Classifica a intenção e atualiza o agente ativo no session_state."""
+    def _handle_approval_flow(self) -> Optional[str]:
+        """Tenta extrair estrutura e criar o Google Doc com o esqueleto."""
+        ss = self.mm.session_state
+        print("[APROVAÇÃO] Iniciando fluxo de aprovação e criação do Google Doc...")
+        
+        # 1. PRIORIDADE: Reutiliza estrutura já salva no session_state
+        estrutura = ss.get('current_structure')
+        if estrutura:
+            print(f"[APROVAÇÃO] Reutilizando estrutura salva ({len(estrutura.get('secoes', []))} seções).")
+        else:
+            # 2. FALLBACK: Extrai da última mensagem da IA
+            print("[APROVAÇÃO] Nenhuma estrutura salva. Tentando extrair da última mensagem...")
+            ultimo_texto_ia = next(
+                (msg['content'] for msg in reversed(self.mm.mensagens) if msg['role'] == 'ai'), 
+                ""
+            )
+            if not ultimo_texto_ia:
+                print("[APROVAÇÃO] ERRO: Nenhuma mensagem da IA encontrada no histórico!")
+                ss['agente_ativo'] = 'ESTRUTURADOR'
+                return "ERROR_FAIL_DOC"
+            
+            estrutura = self.extrair_estrutura_da_mensagem(ultimo_texto_ia)
+        
+        if not estrutura:
+            print("[APROVAÇÃO] ERRO: Não foi possível obter a estrutura.")
+            ss['agente_ativo'] = 'ESTRUTURADOR'
+            return "ERROR_FAIL_DOC"
+        
+        print(f"[APROVAÇÃO] Estrutura com {len(estrutura.get('secoes', []))} seções.")
+        
+        if not self.docs_manager:
+            print("[APROVAÇÃO] ERRO: docs_manager é None! credentials.json pode estar faltando.")
+            ss['agente_ativo'] = 'ESTRUTURADOR'
+            return "ERROR_FAIL_DOC"
+        
+        try:
+            doc_id = self.create_google_doc_from_structure(estrutura)
+        except (gdocs_exceptions.TokenRevokedError, gdocs_exceptions.AuthenticationError) as auth_e:
+            print(f"[APROVAÇÃO] Erro de autenticação detectado: {auth_e}")
+            return "AUTH_REVOKED"
+        except Exception as e:
+            print(f"[APROVAÇÃO] Erro inesperado: {e}")
+            traceback.print_exc()
+            return "ERROR_FAIL_DOC"
+
+        if doc_id:
+            print(f"[APROVAÇÃO] Google Doc criado com sucesso: {doc_id}")
+            ss['active_doc_id'] = doc_id
+            # Prepara fila de seções para escrita pelo Orquestrador
+            ss['sections_queue'] = list(estrutura.get('secoes', []))
+            ss['completed_sections'] = []
+            ss['pending_section'] = None
+            ss['agente_ativo'] = 'ORCHESTRATOR'
+            return doc_id
+        
+        print("[APROVAÇÃO] ERRO: create_google_doc_from_structure retornou None.")
+        ss['agente_ativo'] = 'ESTRUTURADOR'
+        return "ERROR_FAIL_DOC"
+
+    def _handle_content_approval(self, input_usuario: str) -> str:
+        """Trata a aprovação ou rejeição do conteúdo de uma seção."""
+        ss = self.mm.session_state
+        pending = ss.get('pending_section')
+        
+        if not pending:
+            print("[CONTEÚDO] ERRO: Nenhuma seção pendente para aprovação.")
+            ss['agente_ativo'] = 'ORCHESTRATOR'
+            return None
+        
+        if self._is_approval(input_usuario):
+            # Escreve o conteúdo aprovado no Google Doc
+            doc_id = ss.get('active_doc_id')
+            if doc_id and self.docs_manager:
+                try:
+                    clean_content = self._limpar_conteudo_para_doc(pending['content'])
+                    self.docs_manager.write_section(
+                        doc_id, 
+                        pending['key'], 
+                        clean_content, 
+                        title_hint=pending.get('titulo')
+                    )
+                    print(f"[CONTEÚDO] Seção '{pending['key']}' escrita no Google Doc.")
+                    ss['completed_sections'].append(pending['key'])
+                    ss['last_active_section'] = pending['key']
+                except (gdocs_exceptions.TokenRevokedError, gdocs_exceptions.AuthenticationError) as auth_e:
+                    print(f"[CONTEÚDO] Erro de autenticação detectado: {auth_e}")
+                    return "AUTH_REVOKED"
+                except Exception as e:
+                    print(f"[CONTEÚDO] Erro ao escrever seção '{pending['key']}': {e}")
+                    traceback.print_exc()
+            
+            ss['pending_section'] = None
+            ss['agente_ativo'] = 'ORCHESTRATOR'
+            return "CONTENT_APPROVED"
+        else:
+            # Usuário deu feedback, reescrever
+            ss['agente_ativo'] = 'ORCHESTRATOR'
+            return "CONTENT_REJECTED"
+
+    def _generate_next_section(self) -> Generator[str, None, None]:
+        """Gera o conteúdo da próxima seção na fila e exibe no chat."""
+        ss = self.mm.session_state
+        queue = ss.get('sections_queue', [])
+        
+        if not queue:
+            yield "\n\n🎉 **Todas as seções foram finalizadas!** O documento está completo no Google Docs.\n"
+            ss['agente_ativo'] = 'ORCHESTRATOR'
+            return
+        
+        # Pega a próxima seção da fila
+        next_section = queue.pop(0)
+        ss['sections_queue'] = queue
+        
+        section_key = next_section['key']
+        section_titulo = next_section['titulo']
+        total = len(ss.get('completed_sections', [])) + len(queue) + 1
+        current_num = len(ss.get('completed_sections', [])) + 1
+        
+        print(f"[ESCRITA] Gerando seção {current_num}/{total}: {section_titulo}")
+        
+        # Prepara o contexto RAG
+        contexto_rag = self.mm.rag_manager.get_contexto_para_prompt(
+            section_titulo, 
+            cobertura_total=True
+        )
+        
+        # Monta o prompt de escrita acadêmica
+        current_struct = ss.get('current_structure', {})
+        secoes_str = "\n".join([f"  - {s['titulo']}" for s in current_struct.get('secoes', [])])
+        
+        prompt_escrita = f"""Você é um redator acadêmico especialista. Escreva APENAS o conteúdo da seção abaixo.
+
+ESTRUTURA COMPLETA DO TRABALHO:
+{secoes_str}
+
+SEÇÃO A ESCREVER AGORA ({current_num}/{total}): {section_titulo}
+
+REGRAS:
+- Primeira linha: ### {section_titulo}
+- Escreva apenas esta seção, com rigor acadêmico e norma ABNT.
+- Tom formal e impessoal.
+- Ao finalizar, pergunte: "Você aprova esta seção e posso prosseguir para a próxima?"
+
+CONTEXTO DOS DOCUMENTOS:
+{contexto_rag}"""
+        
+        template = ChatPromptTemplate.from_messages([
+            ('system', ESTRUTURADOR_SYSTEM_PROMPT),
+            ('placeholder', '{chat_history}'),
+            ('user', '{input}')
+        ])
+        
+        chain = template | self.llm
+        full_response = ""
+        
+        for chunk in chain.stream({
+            'input': prompt_escrita,
+            'chat_history': self.mm.get_historico_langchain()
+        }):
+            full_response += chunk.content
+            yield chunk.content
+        
+        # Salva o conteúdo pendente para aprovação
+        ss['pending_section'] = {
+            'key': section_key,
+            'titulo': section_titulo,
+            'content': full_response
+        }
+        ss['agente_ativo'] = 'AGUARDANDO_APROVACAO_CONTEUDO'
+        print(f"[ESCRITA] Seção '{section_titulo}' gerada. Estado -> AGUARDANDO_APROVACAO_CONTEUDO")
+
+    def _rewrite_current_section(self, feedback: str) -> Generator[str, None, None]:
+        """Reescreve a seção atual com o feedback do usuário."""
+        ss = self.mm.session_state
+        pending = ss.get('pending_section')
+        
+        if not pending:
+            yield "⚠️ Nenhuma seção pendente para reescrever.\n"
+            return
+        
+        section_titulo = pending['titulo']
+        section_key = pending['key']
+        previous_content = pending['content']
+        
+        contexto_rag = self.mm.rag_manager.get_contexto_para_prompt(
+            section_titulo, 
+            cobertura_total=True
+        )
+        
+        prompt_reescrita = f"""Você já escreveu esta seção anteriormente, mas o usuário solicitou alterações.
+
+SEÇÃO: {section_titulo}
+
+VERSÃO ANTERIOR:
+{previous_content[:2000]}
+
+FEEDBACK DO USUÁRIO:
+{feedback}
+
+REGRAS:
+- Primeira linha: ### {section_titulo}
+- Reescreva incorporando o feedback.
+- Tom formal e impessoal, norma ABNT.
+- Ao finalizar, pergunte: "Você aprova esta seção e posso prosseguir para a próxima?"
+
+CONTEXTO DOS DOCUMENTOS:
+{contexto_rag}"""
+        
+        template = ChatPromptTemplate.from_messages([
+            ('system', ESTRUTURADOR_SYSTEM_PROMPT),
+            ('placeholder', '{chat_history}'),
+            ('user', '{input}')
+        ])
+        
+        chain = template | self.llm
+        full_response = ""
+        
+        for chunk in chain.stream({
+            'input': prompt_reescrita,
+            'chat_history': self.mm.get_historico_langchain()
+        }):
+            full_response += chunk.content
+            yield chunk.content
+        
+        # Atualiza o conteúdo pendente
+        ss['pending_section'] = {
+            'key': section_key,
+            'titulo': section_titulo,
+            'content': full_response
+        }
+        ss['agente_ativo'] = 'AGUARDANDO_APROVACAO_CONTEUDO'
+        print(f"[ESCRITA] Seção '{section_titulo}' reescrita. Estado -> AGUARDANDO_APROVACAO_CONTEUDO")
+
+    def classificar_e_atualizar_estado(self, input_usuario: str) -> Optional[str]:
+        """Classifica a intenção e atualiza o agente ativo no session_state. Retorna doc_id se criado."""
         ss = self.mm.session_state
         estado_atual = ss.get('agente_ativo')
         
-        if estado_atual == 'AGUARDANDO_APROVACAO':
-            input_lower = input_usuario.lower()
-            # Heurística de aprovação: palavras positivas ou comando direto
-            keywords_aprovacao = ["aprov", "gostei", "pode criar", "ok", "perfeito", "excelente", "manda ver", "seguir", "continuar"]
-            
-            if any(kw in input_lower for kw in keywords_aprovacao):
-                print("[TRIAGEM] Estrutura aprovada. Iniciando criação do Google Doc...")
-                
-                # Recupera a última mensagem da IA para extrair a estrutura
-                mensagens = self.mm.mensagens
-                ultimo_texto_ia = ""
-                for msg in reversed(mensagens):
-                    if msg['role'] == 'ai':
-                        ultimo_texto_ia = msg['content']
-                        break
-                
-                if ultimo_texto_ia:
-                    estrutura = self.extrair_estrutura_da_mensagem(ultimo_texto_ia)
-                    if estrutura:
-                        doc_id = self.create_google_doc_from_structure(estrutura)
-                        if doc_id:
-                            print(f"[TRIAGEM] Google Doc criado: {doc_id}")
-                            ss['active_doc_id'] = doc_id
-            
-            ss['agente_ativo'] = 'ESTRUTURADOR'
-            return
+        # 1. Atalho: Estado AGUARDANDO_APROVACAO_CONTEUDO (aprovação de conteúdo de seção)
+        if estado_atual == 'AGUARDANDO_APROVACAO_CONTEUDO':
+            return self._handle_content_approval(input_usuario)
+        
+        # 2. Atalho: Aprovação da estrutura
+        if estado_atual == 'AGUARDANDO_APROVACAO' and self._is_approval(input_usuario):
+            return self._handle_approval_flow()
 
         last_classified = ss.get('last_input_classified')
         if last_classified == input_usuario:
-            return
+            return None
 
         prompt_classificador = """Analise o último input do usuário e classifique a intenção em uma única palavra:
+- APROVACAO: O usuário está concordando, aprovando, confirmando ou aceitando uma sugestão (ex: "sim", "pode ser", "ok", "aprovado", "fechado").
 - ESCRITA: O usuário quer criar, escrever, estruturar, PRODUZIR OU EDITAR um novo documento.
 - CONSULTA: O usuário quer tirar dúvidas sobre o conteúdo ou análise dos documentos existentes.
 - ORCHESTRATOR: Saudação, conversa fiada ou algo irrelevante.
 
-CRITÉRIO DE DESEMPATAR: Se o usuário quer "ESCREVER" algo novo, a prioridade é ESCRITA.
+CRITÉRIO DE DESEMPATE: Se o usuário estiver aprovando uma estrutura proposta anteriormente, responda APROVACAO. Se quiser escrever algo do zero, ESCRITA.
 Resposta (apenas a palavra):"""
         
         historico_resumo = "\n".join([f"{m['role']}: {m['content'][:150]}..." for m in self.mm.mensagens[-3:]])
@@ -454,7 +695,9 @@ Resposta (apenas a palavra):"""
             resposta_raw = self.llm.invoke(mensagens).content.strip().upper()
             ss['last_input_classified'] = input_usuario
             
-            if "ESCRITA" in resposta_raw:
+            if "APROVACAO" in resposta_raw:
+                return self._handle_approval_flow()
+            elif "ESCRITA" in resposta_raw:
                 novo_estado = 'ESTRUTURADOR'
             elif "CONSULTA" in resposta_raw:
                 novo_estado = 'QA'
@@ -468,7 +711,8 @@ Resposta (apenas a palavra):"""
                 "escrever", "criar", "estruturar", "produzir", "redigir", "editar", 
                 "mudar", "alterar", "melhorar", "corrigir", "atualizar", "revisar",
                 "alteração", "correção", "edição", "mudança", "atualização", "revisão",
-                "incluir", "inclusão", "texto", "seção", "capítulo"
+                "incluir", "inclusão", "texto", "seção", "capítulo", "artigo", "trabalho",
+                "monografia", "tese", "dissertação", "acadêmico", "fazer"
             ]
             
             if any(kw in input_lower for kw in keywords_escrita):
@@ -477,12 +721,11 @@ Resposta (apenas a palavra):"""
                 if novo_estado == 'ORCHESTRATOR':
                     novo_estado = 'QA'
             
-            # Heurística 2: Menção direta a Seções do Documento Ativo (FORCE UPDATE)
+            # Heurística 2: Menção direta a Seções do Documento Ativo
             active_doc = ss.get('active_doc_id')
             current_struct = ss.get('current_structure')
             if active_doc and current_struct:
                 for s in current_struct.get('secoes', []):
-                    # Verifica se o título da seção está na mensagem
                     if s['titulo'].lower() in input_lower:
                         print(f"[TRIAGEM] Menção à seção '{s['titulo']}' detectada. Forçando ESTRUTURADOR.")
                         novo_estado = 'ESTRUTURADOR'
