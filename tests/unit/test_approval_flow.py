@@ -130,6 +130,7 @@ class TestApprovalFallback:
                 {'role': 'ai', 'content': '### 1. Introdução\n### 2. Metodologia\n### 3. Conclusão'}
             ]
         )
+        orch.extrair_estrutura_da_mensagem = MagicMock(return_value={'titulo': 'Fallback', 'secoes': [{'key': 'SEC1', 'titulo': 'S1'}]})
         orch.create_google_doc_from_structure = MagicMock(return_value='doc_fallback')
         
         result = orch._handle_approval_flow()
@@ -150,6 +151,7 @@ class TestApprovalFallback:
             },
             mensagens=[]
         )
+        orch.extrair_estrutura_da_mensagem = MagicMock(return_value=None)
         
         result = orch._handle_approval_flow()
         

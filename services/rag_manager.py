@@ -235,7 +235,7 @@ class RAGManager:
             # Valida conteúdo
             is_valid, msg = self.text_processor.validar_conteudo_extraido(conteudo)
             if not is_valid:
-                st.warning(f"⚠️ {nome}: {msg}")
+                print(f"⚠️ {nome}: {msg}")
                 continue
             
             # Sempre gera chunks para o UI (processamento de texto é rápido)

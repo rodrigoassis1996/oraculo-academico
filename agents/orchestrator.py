@@ -112,7 +112,7 @@ JSON:"""
         
         for linha in linhas:
             # Prioridade 1: Headers ### 
-            match_h = re.search(r'#{1,4}\s*(.*)', linha)
+            match_h = re.search(r'^#{1,4}\s*(.*)', linha)
             if match_h:
                 titulo = match_h.group(1).split(":")[0].split("|")[0].strip().replace("*", "")
                 if titulo:
@@ -121,7 +121,7 @@ JSON:"""
                 continue
             
             # Prioridade 2: Lista Numerada (1., 1), 1.1, 1.1.)
-            match_n = re.search(r'(\d+[\.\d]*)[.\)]?\s+(.*)', linha)
+            match_n = re.search(r'^(\d+[\.\d]*)[.\)]?\s+(.*)', linha)
             if match_n:
                 num_part = match_n.group(1)
                 titulo = match_n.group(2).split(":")[0].split("|")[0].strip().replace("*", "")

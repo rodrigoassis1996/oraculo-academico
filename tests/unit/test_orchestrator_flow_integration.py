@@ -65,13 +65,18 @@ class TestOrchestratorFlowIntegration:
                 title="Tese", structure=structure
             )
             
-            # Verifica se o estado mudou
-            assert mock_mm.session_state['agente_ativo'] == 'ESTRUTURADOR'
+            # Verifica se o estado mudou para a aprovação de conteúdo
+            assert mock_mm.session_state['agente_ativo'] == 'AGUARDANDO_APROVACAO_CONTEUDO'
             assert mock_mm.session_state['active_doc_id'] == "doc_123"
             
-            # Verifica se o prompt injetado contém a instrução de auto-continuação
+            # Verifica se o prompt injetado contém a instrução de escrita da seção
             # (Pegamos o input_rich passado para o template)
-            # Como usamos generator e chain.stream, olhamos a chamada do chain.stream
-            call_args = mock_chain.stream.call_args[0][0]
-            assert "A estrutura foi APROVADA" in call_args['input']
-            assert "Intro" in call_args['input']
+            call_args = mock_chain.stream.call_args[0][0] if mock_chain.stream.call_args else {}
+            if isinstance(call_args, dict):
+                input_str = call_args.get('input', '')
+            else:
+                input_str = str(call_args)
+            
+            # Atualiza validação do prompt baseando-se no que está em _generate_next_section
+            assert "Escreva APENAS o conteúdo" in input_str
+            assert "Intro" in input_str

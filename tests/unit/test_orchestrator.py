@@ -31,7 +31,9 @@ def test_llm_initialization_validation(mock_mm):
     # Verifica se o route_request acessa o llm
     with patch('agents.orchestrator.ChatPromptTemplate.from_messages') as mock_prompt:
          mock_chain = MagicMock()
-         mock_prompt.return_value.__or__.return_value = mock_chain
+         mock_template = MagicMock()
+         mock_prompt.return_value = mock_template
+         mock_template.__or__.return_value = mock_chain
          try:
              gen = agent.route_request("objetivo")
              next(gen)

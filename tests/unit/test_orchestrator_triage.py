@@ -45,8 +45,8 @@ def test_route_request_calls_llm_with_orchestrator_prompt(mock_mm):
         chunk.content = "Maestro resp"
         mock_chain.stream.return_value = [chunk]
             
-        # Força o classificador a retornar ORCHESTRATOR para este teste
-        with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
+        # Força o classificador a retornar None (comportamento padrão de não doc_id)
+        with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado', return_value=None):
             gen = agent.route_request("Oi")
             list(gen) # Consome o gerador
         
@@ -87,7 +87,7 @@ def test_prompt_selection_after_transition(mock_mm):
         chunk.content = "" # String vazia para evitar TypeError no re
         mock_chain.stream.return_value = [chunk]
             
-        with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado'):
+        with patch.object(OrchestratorAgent, 'classificar_e_atualizar_estado', return_value=None):
             list(agent.route_request("Como estruturar?"))
         
         assert mock_template_factory.called
