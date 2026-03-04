@@ -1,6 +1,64 @@
 import pytest
 from unittest.mock import MagicMock
 import os
+import sys
+
+# Mocks para evitar carregamento pesado de bibliotecas durante a descoberta de testes.
+# Reduz o tempo de 'collecting' de ~40s para <2s.
+# Eles são desativados se o usuário rodar explicitamente testes E2E.
+is_e2e = any(arg in ["-m", "e2e"] for arg in sys.argv) or any("tests/e2e" in arg for arg in sys.argv)
+
+if not is_e2e:
+    mock_heavy_libs = [
+        "langchain_huggingface",
+        "chromadb",
+        "chromadb.config",
+        "langchain_chroma",
+        "torch",
+        "transformers",
+    ]
+
+    for lib in mock_heavy_libs:
+        if lib not in sys.modules:
+            sys.modules[lib] = MagicMock()
+else:
+    print("[CONFTEST] Executando em modo E2E. Mocks de performance desativados (coleta pode ser lenta).")
+
+@pytest.fixture(autouse=True, scope="session")
+def global_mocks(session_mocker):
+    """
+    Mocks globais para garantir que bibliotecas pesadas não sejam carregadas nos testes unitários.
+    """
+    if not is_e2e:
+        # Patching via string evita que o 'import' real ocorra aqui.
+        session_mocker.patch("langchain_huggingface.HuggingFaceEmbeddings")
+        session_mocker.patch("chromadb.PersistentClient")
+        session_mocker.patch("langchain_openai.ChatOpenAI")
+        
+        # Mock para Langchain Chroma para suportar as duas versões possíveis
+        try:
+            session_mocker.patch("langchain_chroma.Chroma")
+        except Exception:
+            try:
+                session_mocker.patch("langchain_community.vectorstores.Chroma")
+            except Exception:
+                pass
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Pula testes marcados como e2e por padrão, a menos que selecionados via -m e2e
+    ou se estivermos rodando especificamente a pasta de e2e.
+    """
+    marker_opt = config.getoption("-m")
+    
+    # Se o usuário pediu e2e explicitamente ou se estamos em modo is_e2e (via argv), não pulamos.
+    if marker_opt == "e2e" or is_e2e:
+        return
+        
+    skip_e2e = pytest.mark.skip(reason="Usar 'pytest -m e2e' para rodar testes pesados")
+    for item in items:
+        if "e2e" in item.keywords:
+            item.add_marker(skip_e2e)
 
 @pytest.fixture
 def mock_env(monkeypatch):

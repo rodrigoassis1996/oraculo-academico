@@ -76,11 +76,19 @@ class TestDocumentManager:
 
     def test_finalize_removes_placeholders(self, doc_manager, mock_client):
         """Finalization cleanup works as expected."""
-        mock_client.get_document.return_value = {
+        doc_with = {
             'body': {
                 'content': [{'paragraph': {'elements': [{'textRun': {'content': 'Texto {{*INTRO*}}'}}]}}]
             }
         }
+        doc_without = {
+            'body': {
+                'content': [{'paragraph': {'elements': [{'textRun': {'content': 'Texto '}}]}}]
+            }
+        }
+        # São 3 padrões no total. Os dois primeiros não batem e o terceiro bate e depois sai do loop.
+        # Precisamos de 1 chamada para cada padrão que não bate, e 2 para o que bate (uma para achar, uma para sair).
+        mock_client.get_document.side_effect = [doc_with, doc_with, doc_with, doc_without]
         mock_client.find_text.return_value = [(6, 15)]
         
         doc_manager.finalize_document("doc123")

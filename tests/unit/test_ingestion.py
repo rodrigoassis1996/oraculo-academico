@@ -19,7 +19,7 @@ def test_extract_from_file_unsupported():
 
 def test_extract_from_url_mock(mocker):
     """Testa extração de URL com mock do Loader."""
-    mock_loader = mocker.patch("execution.document_ingestion.WebBaseLoader")
+    mock_loader = mocker.patch("langchain_community.document_loaders.WebBaseLoader")
     mock_instance = mock_loader.return_value
     mock_instance.load.return_value = [pytest.importorskip("langchain_core.documents").Document(page_content="Conteúdo da Web")]
     

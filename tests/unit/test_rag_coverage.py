@@ -9,9 +9,7 @@ from langchain_core.documents import Document
 @pytest.fixture
 def rag_manager():
     """Fixture para o RAGManager com mocks."""
-    with patch('services.rag_manager.HuggingFaceEmbeddings'), \
-         patch('services.rag_manager.chromadb.PersistentClient'):
-        return RAGManager(session_state={})
+    return RAGManager(session_state={})
 
 def test_buscar_em_todos_os_documentos(rag_manager):
     """Verifica se o método busca em cada documento individualmente."""

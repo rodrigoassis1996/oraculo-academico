@@ -15,31 +15,24 @@ from time import sleep
 from dotenv import load_dotenv
 load_dotenv()
 
-from fake_useragent import UserAgent
-
-# Set USER_AGENT before any langchain imports to avoid warning
-if not os.getenv("USER_AGENT"):
-    os.environ["USER_AGENT"] = UserAgent().random
+# USER_AGENT configuration is now handled inside functions to avoid slow initialization at top level
 
 # Força o stdout a usar UTF-8 para evitar erros de encoding no Windows
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Loaders do LangChain
-from langchain_community.document_loaders import (
-    WebBaseLoader, 
-    CSVLoader, 
-    PyPDFLoader, 
-    TextLoader
-)
+# Loaders do LangChain are now imported lazily inside functions
 import docx2txt
 
 def extract_from_url(url: str) -> str:
-    """Extrai texto de uma URL com retry e fake user agent."""
+    from fake_useragent import UserAgent
+    from langchain_community.document_loaders import WebBaseLoader
+    
     for tentativa in range(5):
         try:
             # Set User-Agent for WebBaseLoader
-            os.environ['USER_AGENT'] = UserAgent().random
+            if not os.getenv("USER_AGENT"):
+                os.environ['USER_AGENT'] = UserAgent().random
             loader = WebBaseLoader(url, raise_for_status=True)
             docs = loader.load()
             return '\n\n'.join([doc.page_content for doc in docs])
@@ -55,6 +48,7 @@ def extract_from_file(file_path: str, suffix: str) -> str:
     suffix = suffix.lower()
     
     if suffix == '.pdf':
+        from langchain_community.document_loaders import PyPDFLoader
         try:
             import pypdf
         except ImportError:
@@ -67,6 +61,7 @@ def extract_from_file(file_path: str, suffix: str) -> str:
         return '\n\n'.join([doc.page_content for doc in docs])
     
     elif suffix == '.csv':
+        from langchain_community.document_loaders import CSVLoader
         # Tenta múltiplos encodings para CSV
         encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
         last_err = None
@@ -82,6 +77,7 @@ def extract_from_file(file_path: str, suffix: str) -> str:
 
     
     elif suffix == '.txt':
+        from langchain_community.document_loaders import TextLoader
         # Tenta múltiplos encodings
         encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252', 'utf-16']
         last_err = None

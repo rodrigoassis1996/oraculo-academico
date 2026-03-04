@@ -222,28 +222,31 @@ JSON:"""
             yield "🔄 Entendido! Vou reescrever a seção com as suas considerações.\n\n---\n\n"
             yield from self._rewrite_current_section(input_usuario)
             return
-        elif triage_result and triage_result not in ("ORCHESTRATOR", "ESCRITA", "CONSULTA", "ESTRUTURADOR", "QA", None):
+        elif triage_result and triage_result not in ("ORCHESTRATOR", "ESCRITA", "CONSULTA", "ESTRUTURADOR", "QA"):
             # É um doc_id retornado pela aprovação da estrutura
             link = f"https://docs.google.com/document/d/{triage_result}"
             msg_confirmacao = f"✅ **Estrutura Aprovada!**\n\n📄 Documento criado com sucesso: [Abrir no Google Docs]({link})\n\nIniciando a redação do conteúdo...\n\n---\n\n"
             yield msg_confirmacao
+            print(f"[ORCHESTRATOR] Estrutura aprovada. Iniciando geração da primeira seção...")
             # Inicia a escrita da primeira seção automaticamente
             yield from self._generate_next_section()
             return
-        
+
         # 2. Seleção do Prompt baseado no Estado Atual
         agente_atual = ss.get('agente_ativo', 'ORCHESTRATOR')
-        print(f"[ORCHESTRATOR] Estado atual após triagem: {agente_atual}")
+        print(f"[ORCHESTRATOR] Agente ativo selecionado: {agente_atual}")
         prompt_sistema = self._get_prompt_por_agente(agente_atual)
-        
+
         # 3. Detecção de Necessidade de Cobertura Total (Global)
         is_global = self._is_global_query(input_usuario, agente_atual)
-        
+
         # 4. Recuperação de Contexto (RAG)
+        print(f"[ORCHESTRATOR] Buscando contexto RAG (global={is_global})...")
         contexto_rag = self.mm.rag_manager.get_contexto_para_prompt(
-            input_usuario, 
+            input_usuario,
             cobertura_total=is_global
         )
+        print(f"[ORCHESTRATOR] Contexto RAG recuperado ({len(contexto_rag or '')} chars).")
         
         # 5. Execução da Chain
         template = ChatPromptTemplate.from_messages([
@@ -266,12 +269,19 @@ JSON:"""
             input_rich = f"ESTRUTURA APROVADA (RESPEITAR RIGOROSAMENTE):\n{secoes_str}\n\n{input_rich}"
 
         full_response = ""
-        for chunk in chain.stream({
-            'input': input_rich,
-            'chat_history': self.mm.get_historico_langchain()
-        }):
-            full_response += chunk.content
-            yield chunk.content
+        print(f"[ORCHESTRATOR] Iniciando stream da resposta do LLM...")
+        try:
+            for chunk in chain.stream({
+                'input': input_rich,
+                'chat_history': self.mm.get_historico_langchain()
+            }):
+                full_response += chunk.content
+                yield chunk.content
+            print(f"[ORCHESTRATOR] Stream finalizado ({len(full_response)} chars).")
+        except Exception as e:
+            print(f"[ORCHESTRATOR] ERRO no stream do LLM: {e}")
+            yield f"\n\n⚠️ Erro na comunicação com a IA: {str(e)}"
+            return
         
         # 6. Detecção de estrutura proposta (transição para AGUARDANDO_APROVACAO)
         doc_id = ss.get('active_doc_id')

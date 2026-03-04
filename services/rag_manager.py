@@ -7,15 +7,6 @@ import shutil
 from typing import List, Optional
 from dataclasses import dataclass
 
-import chromadb
-from chromadb.config import Settings as ChromaSettings
-
-from langchain_huggingface import HuggingFaceEmbeddings
-try:
-    from langchain_chroma import Chroma
-except ImportError:
-    from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document
 
 from services.text_processor import TextProcessor, TextChunk, ChunkConfig
 
@@ -86,6 +77,9 @@ class RAGManager:
         """Inicializa modelo de embeddings."""
         # Cache do modelo para não recarregar
         if 'embedding_model' not in self.session_state:
+            # Lazy import para evitar overhead na importação do módulo
+            from langchain_huggingface import HuggingFaceEmbeddings
+            
             # Bug fix: 'Cannot copy out of meta tensor' em versões recentes de torch/transformers
             # Forçamos o carregamento direto no CPU sem usar meta tensors se possível
             self.session_state['embedding_model'] = HuggingFaceEmbeddings(
@@ -100,6 +94,9 @@ class RAGManager:
 
     def _init_vector_store(self):
         """Inicializa vector store persistente."""
+        import chromadb
+        from chromadb.config import Settings as ChromaSettings
+
         persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tmp', 'vector_db'))
         
         # Cliente ChromaDB persistente
@@ -121,8 +118,18 @@ class RAGManager:
                     if os.path.exists(persist_dir):
                         print(f"🧹 Tentando limpar índice corrompido em: {persist_dir}")
                         # No Windows, arquivos podem estar presos por outros processos.
-                        # Tentamos remover recursivamente.
-                        shutil.rmtree(persist_dir, ignore_errors=True)
+                        # Tentamos remover recursivamente com retries.
+                        import time
+                        for i in range(3):
+                            try:
+                                shutil.rmtree(persist_dir, ignore_errors=False)
+                                break
+                            except PermissionError:
+                                print(f"  [Tentativa {i+1}] Pasta bloqueada, aguardando 1s...")
+                                time.sleep(1)
+                            except Exception as e:
+                                print(f"  Erro inesperado na remoção: {e}")
+                                break
                     
                     os.makedirs(persist_dir, exist_ok=True)
                     
@@ -132,11 +139,6 @@ class RAGManager:
                             anonymized_telemetry=False,
                             allow_reset=True
                         )
-                    )
-                except PermissionError:
-                    print("⚠️ Pasta de vetores bloqueada (PermissionError). Usando Fallback em memória.")
-                    self.session_state['chroma_client'] = chromadb.Client(
-                        settings=ChromaSettings(anonymized_telemetry=False)
                     )
                 except Exception as recovery_error:
                     print(f"❌ Falha crítica na recuperação: {str(recovery_error)}")
@@ -247,6 +249,7 @@ class RAGManager:
                 docs_skipped += 1
             else:
                 for chunk in chunks:
+                    from langchain_core.documents import Document
                     doc = Document(
                         page_content=chunk.conteudo,
                         metadata={
@@ -289,6 +292,11 @@ class RAGManager:
             progress_callback(0.9, "Atualizando embeddings...")
         
         # Adiciona novos documentos ao vector store existente ou cria um novo
+        try:
+            from langchain_chroma import Chroma
+        except ImportError:
+            from langchain_community.vectorstores import Chroma
+
         if self.vector_store and incremental:
             self.vector_store.add_documents(documentos_langchain)
         else:
@@ -322,7 +330,7 @@ class RAGManager:
         self, 
         query: str, 
         top_k: int = None
-    ) -> List[Document]:
+    ) -> List:
         """
         Busca chunks mais relevantes para a query.
         
@@ -347,7 +355,7 @@ class RAGManager:
         self, 
         query: str, 
         k_por_doc: int = 3
-    ) -> List[Document]:
+    ) -> List:
         """
         Busca chunks mais relevantes em CADA um dos documentos indexados.
         Garante cobertura total do corpus.
