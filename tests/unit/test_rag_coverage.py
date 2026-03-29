@@ -9,7 +9,13 @@ from langchain_core.documents import Document
 @pytest.fixture
 def rag_manager():
     """Fixture para o RAGManager com mocks."""
-    return RAGManager(session_state={})
+    with patch('chromadb.PersistentClient'), \
+         patch('langchain_huggingface.HuggingFaceEmbeddings'):
+        rm = RAGManager(session_state={})
+        # Garante que chroma_client e vector_store sejam mocks configuráveis
+        rm.chroma_client = MagicMock()
+        rm.vector_store = MagicMock()
+        return rm
 
 def test_buscar_em_todos_os_documentos(rag_manager):
     """Verifica se o método busca em cada documento individualmente."""

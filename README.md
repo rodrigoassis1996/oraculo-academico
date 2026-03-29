@@ -1,5 +1,8 @@
 # 👨🏾‍🎓 Oráculo Acadêmico: Ecossistema de IA Full Stack
 
+> [!TIP]
+> **Documentação de Contexto (Conductor)**: Acesse o [Hub de Contexto](file:///c:/Users/dtiDigital/Documents/Meus%20projetos%20Python/Or%C3%A1culo%20Mestrado/conductor/index.md) para detalhes técnicos, visão de produto e guias de estilo que orientam o desenvolvimento assistido por IA.
+
 O **Oráculo Acadêmico** evoluiu de uma ferramenta experimental para um ecossistema robusto de assistência científica. Ele integra inteligência artificial de ponta (**RAG - Retrieval-Augmented Generation**) com a produtividade do **Google Docs**, garantindo que mestrandos e pesquisadores produzam textos de alta qualidade técnica seguindo rigorosamente as normas **ABNT**.
 
 ---
