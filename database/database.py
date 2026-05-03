@@ -2,7 +2,7 @@ import os
 import logging
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker, AsyncEngine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 # Configuração de logging estruturado
 logging.basicConfig(level=logging.INFO)
@@ -40,8 +40,7 @@ logger.info(f"Inicializando conexão com o banco de dados em: {_mask_url(DATABAS
 # Criação do motor assíncrono
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
-    echo=False,
-    future=True
+    echo=False
 )
 
 # Criador de sessões assíncronas
@@ -53,7 +52,9 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 # Base declarativa para os modelos (será usada pelos models)
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Classe base declarativa para todos os models SQLAlchemy 2.0 do projeto."""
+    pass
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
