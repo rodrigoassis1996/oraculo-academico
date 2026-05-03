@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Typography, Divider, Empty } from 'antd';
-import { FileText } from 'lucide-react';
+
 import ReactMarkdown from 'react-markdown';
 
 const { Title, Paragraph } = Typography;

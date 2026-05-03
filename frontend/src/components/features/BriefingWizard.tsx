@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Steps, Input, Button, Space, Typography, Form } from 'antd';
+import { Card, Steps, Input, Button, Typography, Form } from 'antd';
 import { GraduationCap, BookOpen, Target, Lightbulb } from 'lucide-react';
 
 const { Title, Paragraph } = Typography;
