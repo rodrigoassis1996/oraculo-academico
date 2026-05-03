@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import String, Integer, Text
+from sqlalchemy import String, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.database import Base
@@ -17,7 +17,7 @@ class BlocoLogico(Base):
         "PontoNorteador",
         back_populates="bloco",
         lazy="selectin",
-        order_by="PontoNorteador.ordem_exibicao"
+        order_by=text("ordem_exibicao")
     )
 
     def __repr__(self) -> str:
