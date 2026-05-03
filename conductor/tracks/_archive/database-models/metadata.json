@@ -1,0 +1,13 @@
+{
+"id": "database-models",
+"title": "Models SQLAlchemy 2.0 — Modelo Relacional Completo",
+"type": "feature",
+"status": "complete",
+"created": "2026-05-03T20:17:03-03:00",
+"updated": "2026-05-03T20:38:00-03:00",
+"current_phase": 5,
+"current_task": "5.2",
+"phases": { "total": 5, "completed": 5 },
+"tasks": { "total": 10, "completed": 10 },
+"commits": []
+}
