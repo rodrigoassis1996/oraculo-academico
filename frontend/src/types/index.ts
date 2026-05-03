@@ -1,30 +1,33 @@
-﻿export type TipoArquivo = 'PDF' | 'DOCX' | 'CSV' | 'TXT' | 'SITE';
+/** 
+ * Rótulos de status exibidos nos cards do dashboard 
+ */
+export type StatusEtapa =
+    | 'Rascunho'
+    | 'Etapa 1: Contexto'
+    | 'Etapa 2: Revisão'
+    | 'Etapa 3: Metodologia'
+    | 'Etapa 4: Escrita'
+    | 'Revisão';
 
-export type Documento = {
-    id: string;
+/** 
+ * Perfil do usuário autenticado via OAuth Google 
+ */
+export interface Usuario {
+    id: number;
     nome: string;
-    tipo: TipoArquivo;
-    tamanho_bytes: number;
-    tamanho_chars: number;
-    data_upload: string;
-};
+    email: string;
+    fotoPerfil: string | null;
+    role: 'pesquisador' | 'admin';
+}
 
-export type Mensagem = {
-    role: 'human' | 'ai';
-    content: string;
-};
-
-export type SessionInfo = {
-    session_id: string;
-    total_docs: number;
-    active_doc_id?: string;
-    rag_stats?: {
-        total_chunks: number;
-        total_chars: number;
-        media_chars_chunk: number;
-        documentos_indexados: number;
-        documentos_pulpados?: number;
-    };
-};
-
-export const VERSION = '1.0.0';
+/** 
+ * Projeto de pesquisa pertencente a um usuário 
+ */
+export interface Projeto {
+    id: number;
+    titulo: string;
+    etapaAtual: 1 | 2 | 3 | 4 | 5;
+    status: StatusEtapa;
+    dataCriacao: string;
+    dataUltimaModificacao: string | null;
+}
