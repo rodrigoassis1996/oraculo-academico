@@ -339,7 +339,7 @@ const DashboardPage: React.FC = () => {
                                         setModal('sucesso');
                                     }
                                 }}
-                                className="px-5 py-2.5 rounded-xl text-white font-medium bg-primary-fixed-dim hover:bg-inverse-primary transition-colors shadow-sm"
+                                className="px-5 py-2.5 rounded-xl text-primary font-medium bg-primary-fixed-dim hover:bg-inverse-primary transition-colors shadow-sm"
                             >
                                 Criar e Iniciar
                             </button>
