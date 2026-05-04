@@ -60,3 +60,18 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ============================================================
+Design System — Classes customizadas (The Illuminated Archive)
+Portadas do Google Stitch para uso global na aplicação
+============================================================ */
+
+.academic-gradient {
+ background: linear-gradient(135deg, #f7f9fc 0%, #eceef1 100%);
+}
+
+.hero-pattern {
+ background-image: radial-gradient(#405f91 0.5px, transparent 0.5px);
+ background-size: 24px 24px;
+ opacity: 0.1;
+}
