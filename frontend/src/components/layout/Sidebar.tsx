@@ -16,7 +16,7 @@ export const Sidebar: React.FC = () => {
     const { documentos, sessionId, removeDocumento, addDocumento, ragStats, setRagStats, incrementUpload, decrementUpload } = useAppStore();
     const uploadMutation = useUploadDocument();
 
-    const handleUpload = async (options: any) => {
+    const handleUpload = async (options: unknown) => {
         const { file, onSuccess, onError } = options;
         if (!sessionId) return;
 

@@ -26,7 +26,7 @@ function AppContent() {
         setRagStats(sessionData.rag_stats);
       }
     }
-  }, [sessionData, sessionId, setSessionId, setRagStats]);
+  }, [sessionData, sessionId, setSessionId, setRagStats, setActiveDocId]);
 
   if (isLoading) {
     return (
