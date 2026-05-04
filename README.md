@@ -1,146 +1,85 @@
-# 👨🏾‍🎓 Oráculo Acadêmico: Ecossistema de IA Full Stack
+# Oráculo Acadêmico
 
-> [!TIP]
-> **Documentação de Contexto (Conductor)**: Acesse o [Hub de Contexto](file:///c:/Users/dtiDigital/Documents/Meus%20projetos%20Python/Or%C3%A1culo%20Mestrado/conductor/index.md) para detalhes técnicos, visão de produto e guias de estilo que orientam o desenvolvimento assistido por IA.
+Sistema Multiagente de IA para assistência na produção de textos acadêmicos longos com qualidade científica. Projeto de dissertação do PPGIT/UFMG.
 
-O **Oráculo Acadêmico** evoluiu de uma ferramenta experimental para um ecossistema robusto de assistência científica. Ele integra inteligência artificial de ponta (**RAG - Retrieval-Augmented Generation**) com a produtividade do **Google Docs**, garantindo que mestrandos e pesquisadores produzam textos de alta qualidade técnica seguindo rigorosamente as normas **ABNT**.
+O **Oráculo Acadêmico** utiliza inteligência artificial generativa avançada e uma arquitetura multiagente para auxiliar pesquisadores na estruturação, fundamentação e redação de trabalhos científicos, garantindo rigor metodológico e conformidade com normas acadêmicas.
 
----
+## Stack Tecnológica
 
-## ✨ Diferenciais Tecnológicos
+### Backend:
+- **Linguagem**: Python 3.11+
+- **Framework Web**: FastAPI
+- **Persistência**: SQLAlchemy 2.0 (async) + Alembic
+- **Banco de Dados**: PostgreSQL + asyncpg
+- **Orquestração Multiagente**: LangGraph / AutoGen
+- **RAG (Retrieval-Augmented Generation)**: ChromaDB (base vetorial)
+- **Integrações**: Google Docs API
+- **LLMs**: GPT-4, Claude (via API com versionamento fixo)
 
-- **Arquitetura Full Stack Moderna**: Backend resiliente em FastAPI e Frontend reativo em React 19.
-- **Cérebro Multiagente (Maestro)**: Um orquestrador inteligente que tria solicitações entre especialistas em **Redação/Estruturação** e **Análise/QA**.
-- **Escrita Iterativa e Inteligente**:
-    - **Aprovação por Seção**: O conteúdo é gerado e revisado seção por seção, garantindo controle total do autor sobre o texto.
-    - **Detecção de Estrutura**: Mapeamento automático de sumários acadêmicos a partir de diálogos naturais.
-- **Integração Nativa Google Docs**:
-    - **Resiliência OAuth 2.0**: Fluxo de auto-recuperação de tokens e reautenticação assistida por link direto no chat.
-    - **Formatação ABNT Nativa**: Aplicação automática de margens, fontes e estilos de parágrafo sem riscos de "ranges vazios".
-- **Garantia de Qualidade (QA)**: Suíte abrangente com **50+ testes automatizados**, segregando testes unitários/integração de testes End-to-End (E2E).
-- **Auto-recuperação de Dados**: Protocolos de limpeza e restauração para o banco vetorial (ChromaDB) e gerenciamento resiliente de sessões.
+### Frontend:
+- **Framework**: React 19 + TypeScript + Vite
+- **Estilização**: TailwindCSS (Design System "The Illuminated Archive")
+- **Roteamento**: React Router v7
+- **Gerenciamento de Estado**: Zustand
+- **Data Fetching**: TanStack Query (React Query)
 
----
+## Estrutura do Projeto
 
-## 🤖 Fluxo de IA e Roteamento
+- `agents/` — Lógica dos agentes especializados e definições de personas.
+- `services/` — Integrações externas (RAG, Google Docs, Gerenciamento de Memória).
+- `database/` — Models SQLAlchemy, migrações Alembic e configuração do PostgreSQL.
+- `api/v2/` — Endpoints FastAPI da versão 2.0, organizados por domínio.
+- `conductor/` — Framework de gerenciamento de contexto, design system e tracks de desenvolvimento.
+- `frontend/src/` — Aplicação React V2.0.
+  - `pages/` — Páginas da aplicação organizadas por rota (Auth, Dashboard, Workspace).
+  - `components/` — Componentes reutilizáveis divididos em `ui` (base) e `features` (complexos).
+  - `types/` — Interfaces TypeScript compartilhadas entre frontend e definições de API.
 
-O Oráculo utiliza uma arquitetura multiagente coordenada pelo **Orquestrador Central**.
+## Arquitetura do Sistema
 
-```mermaid
-graph TD
-    A[Usuário] -->|Input| B(Orquestrador)
-    B -->|Triagem Inteligente| C{Intenção?}
-    
-    C -->|Escrever/Estruturar| D[Agente Estruturador]
-    C -->|Dúvida / Análise| E[Agente QA / Consulta]
-    
-    D -->|Proposta de Sumário| F{Aprovação Estrutura?}
-    F -->|Ajustar| D
-    
-    F -->|Sim| G[Processo de Escrita Seccional]
-    G -->|Geração de Conteúdo| H{Aprovação Conteúdo?}
-    
-    H -->|Aprovar| I[Persistência Google Docs]
-    H -->|Ajustar| G
-    
-    I -->|Próxima Seção| G
-    
-    E -->|Resposta via RAG| A
-```
+O sistema opera através de um pipeline multiagente dividido em 5 etapas fundamentais:
 
----
+1.  **Agente Questionador**: Realiza a entrevista metodológica inicial para capturar o tema, problema e objetivos.
+2.  **Revisão de Literatura**: Ingestão de corpus acadêmico via RAG/ChromaDB para fundamentação teórica.
+3.  **Alinhamento e Cruzamento**: Análise de consistência entre o contexto do pesquisador e a literatura revisada.
+4.  **Agente Estruturador**: Geração do esqueleto/sumário detalhado do documento acadêmico.
+5.  **Escrita Assistida**: Redação iterativa das seções com suporte human-in-the-loop para refinamento.
 
-## 🏗️ Estrutura do Projeto
+## Como Executar
 
-O ecossistema é dividido em competências específicas:
-
-### 🧠 Cérebro (Agentes)
-- **Orquestrador (Maestro)**: Gerencia o estado da sessão, triagem de intenções e coordena o loop de escrita seccional com persistência no Google Docs.
-- **Agente Estruturador**: Especialista em semântica acadêmica. Analisa o tema e propõe um sumário fundamentado.
-- **Agente QA (Consulta)**: Utiliza RAG para responder dúvidas baseadas nos documentos carregados no ChromaDB.
-
-### 🐍 Backend (Python 3.11 + FastAPI)
-- `agents/`: Lógica dos agentes e definições de personas.
-- `services/`: 
-    - `google_docs/`: Gerenciador de documentos, formatador ABNT e cliente OAuth 2.0.
-    - `rag_manager.py`: Indexação e busca vetorial.
-- `main_api.py`: Endpoint principal e regras de negócio.
-
-### ⚛️ Frontend (React 19 + TypeScript)
-- Localizado em `frontend/`.
-- UI moderna baseada em **Ant Design** e **TailwindCSS**.
-- Gerenciamento de estado otimizado para streaming de IA.
-
----
-
-## 🧪 Suíte de Testes e Qualidade
-
-O projeto utiliza uma abordagem de testes segregada para garantir rapidez no desenvolvimento e confiabilidade no deploy.
-
-### 1. Testes de Backend (Pytest)
-
-Os testes estão divididos em categorias para facilitar a execução:
-
+### Backend:
 ```bash
-# Executar apenas testes unitários e de integração (Rápido)
-pytest -m "not e2e"
+# Criar e ativar ambiente virtual
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate     # Windows
 
-# Executar apenas testes End-to-End (Requer credenciais reais)
-pytest -m e2e
-
-# Executar testes específicos de um módulo (ex: Google Docs)
-pytest tests/services/test_google_docs_resilience.py
-```
-
-### 2. Testes de Frontend (Vitest)
-```bash
-cd frontend
-npm test
-```
-
-### 3. Cobertura e Resiliência
-- **Mocking Extensivo**: Testes unitários utilizam mocks para simular APIs externas (OpenAI, Google).
-- **Resiliência OAuth**: Testes específicos validam a renovação de tokens e recuperação de erros 401/403.
-- **Integridade RAG**: Verificação de sanidade do ChromaDB e persistência de documentos.
-
----
-
-## 🚀 Início Rápido
-
-### 1. Configuração do Ambiente
-
-**Backend**:
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
+# Instalar dependências
 pip install -r requirements.txt
+
+# Executar servidor de desenvolvimento
+uvicorn main_api:app --reload
 ```
 
-**Frontend**:
+### Frontend:
 ```bash
 cd frontend
 npm install
-```
-
-### 2. Execução (Desenvolvimento)
-
-**Terminal 1 (API)**:
-```bash
-.\.venv\Scripts\activate
-python -m uvicorn main_api:app --reload
-```
-
-**Terminal 2 (Web)**:
-```bash
-cd frontend
 npm run dev
 ```
-> Acesse: `http://localhost:5173`
+
+### Variáveis de Ambiente Necessárias:
+Crie um arquivo `.env` na raiz (backend) e em `frontend/.env`:
+```env
+DATABASE_URL=postgresql+asyncpg://usuario:senha@localhost:5432/oraculo_academico
+# Google OAuth, OpenAI API Key, Claude API Key, etc.
+```
+
+## Status do Projeto
+
+Em desenvolvimento ativo — dissertação PPGIT/UFMG 2025–2026.
+Foco atual: Estabilização do Frontend V2.0 e unificação do sistema de tipos.
 
 ---
-
-**Status Atual: Estável. Suíte de QA integrada e documentada.** 🚀🎓
-
----
-
-**Oráculo Acadêmico**: Transformando a complexidade da pesquisa científica em um processo de co-criação fluído, estável e padronizado. 🎓👨🏾‍🎓✨
+**Oráculo Acadêmico** — Transformando a complexidade da pesquisa científica em um processo de co-criação fluido e padronizado. 🎓✨

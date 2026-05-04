@@ -1,12 +1,12 @@
 # Plano: Dashboard de Projetos — Login, Sidebar e Páginas V2.0
 
-## Status: [ ] Pendente
+## Status: [~] Em Progresso
 
 ---
 
 ## Fase 1 — Design System Foundation
-- [ ] Task 1.1: Atualizar tailwind.config.js (ou .ts) com os tokens completos do Design System
-- [ ] Task 1.2: Atualizar frontend/index.html adicionando no <head>:
+- [x] Task 1.1: Atualizar tailwind.config.js (ou .ts) com os tokens completos do Design System
+- [x] Task 1.2: Atualizar frontend/index.html adicionando no <head>:
 Google Fonts: Space Grotesk (300,400,500,600,700) + Inter (300,400,500,600,700)
 Material Symbols Outlined (wght,FILL@100..700,0..1)
 CSS para .material-symbols-outlined com font-variation-settings padrão
@@ -18,7 +18,7 @@ Verificação da Fase 1:
 ---
 
 ## Fase 2 — Componentes Compartilhados
-- [ ] Task 2.1: Criar frontend/src/components/layout/AppSidebar.tsx
+- [x] Task 2.1: Criar frontend/src/components/layout/AppSidebar.tsx
 
 Sidebar fixa (w-64, hidden md:flex, fixed left-0 top-0, h-screen)
 Logo "Oráculo Acadêmico" em primary-fixed-dim, Space Grotesk bold
@@ -29,7 +29,7 @@ Item inativo: hover:bg-gray-50 + rounded-xl
 Rodapé: link Suporte com ícone help_outline
 Props: activeRoute: string
 
-- [ ] Task 2.2: Criar frontend/src/components/ui/ProjectCard.tsx
+- [x] Task 2.2: Criar frontend/src/components/ui/ProjectCard.tsx
 
 Props: projeto: Projeto, onClick?: () => void
 Card: bg-white rounded-xl p-6, h-64, shadow sutil, border border-gray-100
@@ -46,7 +46,7 @@ Verificação da Fase 2:
 ---
 
 ## Fase 3 — LoginPage
-- [ ] Task 3.1: Criar frontend/src/pages/auth/LoginPage.tsx
+- [x] Task 3.1: Criar frontend/src/pages/auth/LoginPage.tsx
 
 Referência: usar fielmente o HTML do Stitch da tela de Login como base.
 
@@ -64,7 +64,7 @@ Estrutura:
 - Handler: onGoogleLogin prop (onClick do botão → chamar prop)
 - Mobile: apenas a coluna do card (coluna esquerda hidden abaixo de lg)
 
-- [ ] Task 3.2: Atualizar frontend/src/pages/auth/index.ts
+- [x] Task 3.2: Atualizar frontend/src/pages/auth/index.ts
 Exportar: export { default as LoginPage } from './LoginPage'
 
 Verificação da Fase 3:
@@ -74,7 +74,7 @@ Verificação da Fase 3:
 ---
 
 ## Fase 4 — DashboardPage + Modais
-- [ ] Task 4.1: Criar frontend/src/pages/dashboard/DashboardPage.tsx
+- [x] Task 4.1: Criar frontend/src/pages/dashboard/DashboardPage.tsx
 
 Referência: usar fielmente o HTML do Stitch do Dashboard como base.
 
@@ -142,7 +142,7 @@ Modal 3 — ErroModal:
   Subtítulo "Não foi possível processar sua solicitação no momento. Por favor, verifique sua conexão e tente novamente."
   Botões: "Tentar novamente" (bg-primary-fixed-dim) + "Cancelar" (link ghost)
 
-- [ ] Task 4.3: Atualizar frontend/src/pages/dashboard/index.ts
+- [x] Task 4.3: Atualizar frontend/src/pages/dashboard/index.ts
 Exportar: export { default as DashboardPage } from './DashboardPage'
 
 Verificação da Fase 4:
@@ -153,15 +153,10 @@ Verificação da Fase 4:
 ---
 
 ## Fase 5 — Roteamento e Validação Final
-- [ ] Task 5.1: Atualizar frontend/src/main.tsx envolvendo App com BrowserRouter
-- [ ] Task 5.2: Criar frontend/src/router.tsx com rotas:
-/ → redireciona para /dashboard
-/login → LoginPage (lazy com React.lazy + Suspense)
-/dashboard → DashboardPage (lazy com React.lazy + Suspense)
-* → redireciona para /dashboard
-- [ ] Task 5.3: Executar npm run build
-- [ ] Task 5.4: Executar npm run lint
+- [x] Task 5.1: Configurar frontend/src/lib/router.tsx
+- [x] Task 5.2: Atualizar frontend/src/App.tsx
+- [x] Task 5.3: Executar npm run build e npm run lint
 
 Verificação da Fase 5:
 - build e lint passam com 0 erros e 0 warnings
-- router.tsx usa React.lazy e Suspense para code splitting
+- Navegação entre rotas funcionando via RouterProvider
