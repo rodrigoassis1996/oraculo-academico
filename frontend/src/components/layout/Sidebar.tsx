@@ -16,7 +16,16 @@ export const Sidebar: React.FC = () => {
     const { documentos, sessionId, removeDocumento, addDocumento, ragStats, setRagStats, incrementUpload, decrementUpload } = useAppStore();
     const uploadMutation = useUploadDocument();
 
-    const handleUpload = async (options: unknown) => {
+    interface UploadCallbackProps {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        file: any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onSuccess?: (res: any) => void;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onError?: (err: any) => void;
+    }
+
+    const handleUpload = async (options: UploadCallbackProps) => {
         const { file, onSuccess, onError } = options;
         if (!sessionId) return;
 
@@ -42,11 +51,11 @@ export const Sidebar: React.FC = () => {
             } else {
                 message.success(`${file.name} carregado com sucesso.`);
             }
-            onSuccess(result);
+            if (onSuccess) onSuccess(result);
         } catch (err) {
             hide();
             message.error(`Falha ao carregar ${file.name}.`);
-            onError(err);
+            if (onError) onError(err);
         } finally {
             decrementUpload();
         }

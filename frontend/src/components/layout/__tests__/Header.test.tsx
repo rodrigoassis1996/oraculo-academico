@@ -10,7 +10,8 @@ vi.mock('../../../store/useAppStore', () => ({
 
 describe('Header Component', () => {
     it('deve renderizar o título do projeto', () => {
-        (useAppStore as unknown).mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useAppStore as any).mockReturnValue({
             sessionId: 'test-session',
             activeDocId: null,
         });
@@ -20,7 +21,8 @@ describe('Header Component', () => {
     });
 
     it('deve exibir o ID da sessão', () => {
-        (useAppStore as unknown).mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useAppStore as any).mockReturnValue({
             sessionId: 'abcd1234-efgh-5678',
             activeDocId: null,
         });

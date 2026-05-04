@@ -36,7 +36,8 @@ vi.mock('../../api/queries', () => ({
 describe('Fluxo de Chat do Agente', () => {
     beforeEach(() => {
         // Reset do Store para cada teste
-        (useAppStore as unknown).mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useAppStore as any).mockReturnValue({
             mensagens: [],
             addMensagem: vi.fn(),
             sessionId: 'test-session',
