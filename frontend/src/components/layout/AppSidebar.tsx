@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export interface AppSidebarProps {
     activeRoute: string;
@@ -21,9 +22,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ activeRoute }) => {
                 {navItems.map((item) => {
                     const isActive = activeRoute === item.id;
                     return (
-                        <a
+                        <Link
                             key={item.id}
-                            href={`/${item.id}`}
+                            to={`/${item.id}`}
                             className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm transition-all ${
                                 isActive
                                     ? 'text-gray-900 bg-amber-50/50 border-l-4 border-primary-fixed-dim rounded-r-xl'
@@ -37,15 +38,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ activeRoute }) => {
                                 {item.icon}
                             </span>
                             {item.label}
-                        </a>
+                        </Link>
                     );
                 })}
             </div>
             <div className="px-4 mt-auto">
-                <a className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-300 font-medium text-sm" href="/suporte">
+                <Link className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-300 font-medium text-sm" to="/suporte">
                     <span className="material-symbols-outlined">help_outline</span>
                     Suporte
-                </a>
+                </Link>
             </div>
         </nav>
     );
