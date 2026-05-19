@@ -124,7 +124,7 @@ Verificação da Fase 2:
 ---
 
 ## Fase 3 — Componentes de Tabela e CSS
-- [ ] Task 3.1: Adicionar ao frontend/src/index.css (após as classes existentes):
+- [x] Task 3.1: Adicionar ao frontend/src/index.css (após as classes existentes):
 
 @keyframes shimmer {
   0% { background-position: -200% 0; }
