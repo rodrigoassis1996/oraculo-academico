@@ -308,7 +308,7 @@ Verificação da Fase 4:
 ## Fase 5 — Validação Final
 - [x] Task 5.1: npm run build → 0 erros
 - [x] Task 5.2: npm run lint → 0 erros e 0 warnings
-- [~] Task 5.3: Commit final
+- [x] Task 5.3: Commit final
 
 Verificação da Fase 5:
 - Build e lint passam
