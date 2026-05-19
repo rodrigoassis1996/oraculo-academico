@@ -325,7 +325,22 @@ const DashboardPage: React.FC = () => {
                     <span className="font-display font-bold text-xl text-primary-fixed-dim tracking-tight">Oráculo</span>
                     <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-                        <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary-fixed-dim font-bold">A</div>
+                        <div className="relative" ref={mobileUserMenuRef}>
+                            <div 
+                                onClick={() => setUserMenuAberto(!userMenuAberto)}
+                                className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary-fixed-dim font-bold cursor-pointer hover:opacity-90 transition-opacity"
+                            >
+                                A
+                            </div>
+                            {userMenuAberto && (
+                                <UserMenuDropdown
+                                    isAdmin={isAdmin}
+                                    nomeUsuario="Ana"
+                                    emailUsuario="ana.silva@universidade.edu"
+                                    onFechar={() => setUserMenuAberto(false)}
+                                />
+                            )}
+                        </div>
                     </div>
                 </header>
 
@@ -336,14 +351,27 @@ const DashboardPage: React.FC = () => {
                             <span className="material-symbols-outlined">notifications</span>
                             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-secondary rounded-full border-2 border-surface"></span>
                         </button>
-                        <div className="flex items-center gap-3 bg-surface-container-low py-2 px-3 rounded-full cursor-pointer hover:bg-surface-container transition-colors">
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-on-surface">Ana</p>
-                                <p className="text-xs text-on-surface-variant">Pesquisadora Sênior</p>
+                        <div className="relative" ref={userMenuRef}>
+                            <div 
+                                onClick={() => setUserMenuAberto(!userMenuAberto)}
+                                className="flex items-center gap-3 bg-surface-container-low py-2 px-3 rounded-full cursor-pointer hover:bg-surface-container transition-colors"
+                            >
+                                <div className="text-right">
+                                    <p className="text-sm font-medium text-on-surface">Ana</p>
+                                    <p className="text-xs text-on-surface-variant">Pesquisadora Sênior</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary-fixed-dim font-bold">
+                                    A
+                                </div>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary-fixed-dim font-bold">
-                                A
-                            </div>
+                            {userMenuAberto && (
+                                <UserMenuDropdown
+                                    isAdmin={isAdmin}
+                                    nomeUsuario="Ana"
+                                    emailUsuario="ana.silva@universidade.edu"
+                                    onFechar={() => setUserMenuAberto(false)}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>
