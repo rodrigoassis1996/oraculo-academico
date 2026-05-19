@@ -1,0 +1,22 @@
+{
+  "id": "dashboard-controls-v2",
+  "title": "Dashboard — Controles Interativos e View de Tabela",
+  "type": "feature",
+  "status": "in_progress",
+  "created": "2026-05-19T09:59:24-03:00",
+  "updated": "2026-05-19T09:59:24-03:00",
+  "current_phase": 1,
+  "current_task": "1.2",
+  "phases": {
+    "total": 5,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 11,
+    "completed": 1
+  },
+  "commits": [
+    "95c56db: feat: add OrdemOpcao and ViewMode types (dashboard-controls-v2)",
+    "328f9e3: chore: mark task 1.1 complete (dashboard-controls-v2)"
+  ]
+}
