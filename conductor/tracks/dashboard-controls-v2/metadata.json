@@ -5,15 +5,15 @@
   "status": "in_progress",
   "created": "2026-05-19T09:59:24-03:00",
   "updated": "2026-05-19T09:59:24-03:00",
-  "current_phase": 2,
-  "current_task": "3.1",
+  "current_phase": 3,
+  "current_task": "3.2",
   "phases": {
     "total": 5,
     "completed": 2
   },
   "tasks": {
     "total": 11,
-    "completed": 5
+    "completed": 6
   },
   "commits": [
     "95c56db: feat: add OrdemOpcao and ViewMode types (dashboard-controls-v2)",
@@ -25,6 +25,8 @@
     "d17e0f3: feat: add SortDropdown component (dashboard-controls-v2)",
     "635eb27: chore: mark task 2.2 complete (dashboard-controls-v2)",
     "036459c: feat: add UserMenuDropdown component (dashboard-controls-v2)",
-    "fc68947: chore: mark task 2.3 complete (dashboard-controls-v2)"
+    "fc68947: chore: mark task 2.3 complete (dashboard-controls-v2)",
+    "6ffdb6d: feat: add shimmer animation to index.css (dashboard-controls-v2)",
+    "e8913f7: chore: mark task 3.1 complete (dashboard-controls-v2)"
   ]
 }
