@@ -135,89 +135,95 @@ const DashboardPage: React.FC = () => {
                         Aqui está o seu ambiente de pesquisa e estruturação acadêmica.
                     </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2 w-64 group focus-within:ring-2 focus-within:ring-primary-fixed-dim/20 transition-all">
-                        <span className="material-symbols-outlined text-gray-400 text-lg">search</span>
-                        <input
-                            type="text"
-                            placeholder="Buscar..."
-                            className="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full text-gray-600 outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                        <span className="text-[10px] font-bold text-gray-300 ml-2 border border-gray-200 px-1 rounded">⌘K</span>
+                <div className="flex flex-col items-end gap-3">
+                    {/* Linha 1: Search + Status */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2 w-64 group focus-within:ring-2 focus-within:ring-primary-fixed-dim/20 transition-all">
+                            <span className="material-symbols-outlined text-gray-400 text-lg">search</span>
+                            <input
+                                type="text"
+                                placeholder="Buscar..."
+                                className="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full text-gray-600 outline-none"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <span className="text-[10px] font-bold text-gray-300 ml-2 border border-gray-200 px-1 rounded">⌘K</span>
+                        </div>
+
+                        <div className="relative" ref={statusRef}>
+                            <button
+                                onClick={() => setStatusDropdownAberto(!statusDropdownAberto)}
+                                className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo.length > 0
+                                        ? 'bg-amber-100 border-amber-400 text-amber-900 hover:bg-amber-200'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined text-lg">filter_list</span>
+                                {filtroAtivo.length === 0 && 'Status'}
+                                {filtroAtivo.length === 1 && filtroAtivo[0]}
+                                {filtroAtivo.length > 1 && `Status (${filtroAtivo.length})`}
+                            </button>
+                            {statusDropdownAberto && (
+                                <StatusFilterPanel
+                                    statusSelecionados={filtroAtivo}
+                                    onAplicar={(novosFiltros) => {
+                                        setFiltroAtivo(novosFiltros);
+                                        setEstado(novosFiltros.length > 0 ? 'filtrado' : 'populado');
+                                    }}
+                                    onFechar={() => setStatusDropdownAberto(false)}
+                                />
+                            )}
+                        </div>
                     </div>
 
-                    <div className="relative" ref={statusRef}>
-                        <button
-                            onClick={() => setStatusDropdownAberto(!statusDropdownAberto)}
-                            className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo.length > 0
-                                    ? 'bg-amber-100 border-amber-400 text-amber-900 hover:bg-amber-200'
-                                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    {/* Linha 2: Sort + View Toggle */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative" ref={sortRef}>
+                            <button
+                                onClick={() => setSortDropdownAberto(!sortDropdownAberto)}
+                                className="flex items-center gap-2 px-4 h-10 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                                {ordenacao === 'recentes' && 'Mais recentes'}
+                                {ordenacao === 'antigos' && 'Mais antigos'}
+                                {ordenacao === 'nome-az' && 'Nome (A → Z)'}
+                                {ordenacao === 'nome-za' && 'Nome (Z → A)'}
+                                {ordenacao === 'etapa' && 'Etapa atual'}
+                                <span className="material-symbols-outlined text-lg">expand_more</span>
+                            </button>
+                            {sortDropdownAberto && (
+                                <SortDropdown
+                                    valorAtual={ordenacao}
+                                    onSelecionar={(opcao) => {
+                                        setOrdenacao(opcao);
+                                        setSortDropdownAberto(false);
+                                    }}
+                                    onFechar={() => setSortDropdownAberto(false)}
+                                />
+                            )}
+                        </div>
+
+                        <div className="flex bg-gray-100 rounded-xl p-1">
+                            <button 
+                                onClick={() => setViewMode('grid')}
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                    viewMode === 'grid' 
+                                        ? 'bg-white shadow-sm text-primary-fixed-dim' 
+                                        : 'text-gray-400 hover:text-gray-600'
                                 }`}
-                        >
-                            <span className="material-symbols-outlined text-lg">filter_list</span>
-                            {filtroAtivo.length === 0 && 'Status'}
-                            {filtroAtivo.length === 1 && filtroAtivo[0]}
-                            {filtroAtivo.length > 1 && `Status (${filtroAtivo.length})`}
-                        </button>
-                        {statusDropdownAberto && (
-                            <StatusFilterPanel
-                                statusSelecionados={filtroAtivo}
-                                onAplicar={(novosFiltros) => {
-                                    setFiltroAtivo(novosFiltros);
-                                    setEstado(novosFiltros.length > 0 ? 'filtrado' : 'populado');
-                                }}
-                                onFechar={() => setStatusDropdownAberto(false)}
-                            />
-                        )}
-                    </div>
-
-                    <div className="relative" ref={sortRef}>
-                        <button
-                            onClick={() => setSortDropdownAberto(!sortDropdownAberto)}
-                            className="flex items-center gap-2 px-4 h-10 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
-                        >
-                            {ordenacao === 'recentes' && 'Mais recentes'}
-                            {ordenacao === 'antigos' && 'Mais antigos'}
-                            {ordenacao === 'nome-az' && 'Nome (A → Z)'}
-                            {ordenacao === 'nome-za' && 'Nome (Z → A)'}
-                            {ordenacao === 'etapa' && 'Etapa atual'}
-                            <span className="material-symbols-outlined text-lg">expand_more</span>
-                        </button>
-                        {sortDropdownAberto && (
-                            <SortDropdown
-                                valorAtual={ordenacao}
-                                onSelecionar={(opcao) => {
-                                    setOrdenacao(opcao);
-                                    setSortDropdownAberto(false);
-                                }}
-                                onFechar={() => setSortDropdownAberto(false)}
-                            />
-                        )}
-                    </div>
-
-                    <div className="flex bg-gray-100 rounded-xl p-1">
-                        <button 
-                            onClick={() => setViewMode('grid')}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                viewMode === 'grid' 
-                                    ? 'bg-white shadow-sm text-primary-fixed-dim' 
-                                    : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                        >
-                            <span className="material-symbols-outlined text-xl">grid_view</span>
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('lista')}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                                viewMode === 'lista' 
-                                    ? 'bg-white shadow-sm text-amber-600' 
-                                    : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                        >
-                            <span className="material-symbols-outlined text-xl">view_list</span>
-                        </button>
+                            >
+                                <span className="material-symbols-outlined text-xl">grid_view</span>
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('lista')}
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                    viewMode === 'lista' 
+                                        ? 'bg-white shadow-sm text-amber-600' 
+                                        : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                <span className="material-symbols-outlined text-xl">view_list</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
