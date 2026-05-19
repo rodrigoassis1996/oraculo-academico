@@ -210,7 +210,7 @@ O botão Status agora é envolvido em div relative:
   </div>
 Usar useClickOutside(statusRef, () => setStatusDropdownAberto(false))
 
-- [ ] Task 4.3: Substituir botão Mais Recentes por versão com dropdown real
+- [x] Task 4.3: Substituir botão Mais Recentes por versão com dropdown real
 
 Referência: HTML "Dashboard — Cards — Filtro de ordenação (dropdown aberto)"
 
