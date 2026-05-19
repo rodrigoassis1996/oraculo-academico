@@ -2,12 +2,12 @@
   "id": "alembic-setup",
   "title": "Alembic — Configuração e Migration Inicial",
   "type": "feature",
-  "status": "in_progress",
+  "status": "complete",
   "created": "2026-05-19T13:14:30-03:00",
-  "updated": "2026-05-19T13:24:24-03:00",
+  "updated": "2026-05-19T13:24:55-03:00",
   "current_phase": 3,
   "current_task": "3.3",
-  "phases": { "total": 3, "completed": 2 },
+  "phases": { "total": 3, "completed": 3 },
   "tasks": { "total": 6, "completed": 6 },
   "commits": [
     "dbfa32c: chore: initialize alembic-setup track definition (alembic-setup)",
@@ -16,6 +16,7 @@
     "b536046: feat: replace env.py with async version (alembic-setup)",
     "8b7c0b3: feat: verify env.py imports successfully (alembic-setup)",
     "0f3c722: feat: generate initial database migration (alembic-setup)",
-    "6cdef5b: feat: apply initial database migration (alembic-setup)"
+    "6cdef5b: feat: apply initial database migration (alembic-setup)",
+    "76fbdb4: feat: verify PostgreSQL tables are created successfully (alembic-setup)"
   ]
 }
