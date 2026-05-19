@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import type { StatusEtapa } from '../../types';
 
 interface StatusFilterPanelProps {
-  statusSelecionado: StatusEtapa | null;
-  onAplicar: (status: StatusEtapa | null) => void;
+  statusSelecionados: StatusEtapa[];
+  onAplicar: (status: StatusEtapa[]) => void;
   onFechar: () => void;
 }
 
@@ -23,11 +23,11 @@ const opcoes: OpcaoStatus[] = [
 ];
 
 export const StatusFilterPanel: React.FC<StatusFilterPanelProps> = ({
-  statusSelecionado,
+  statusSelecionados,
   onAplicar,
   onFechar
 }) => {
-  const [selecionadoLocal, setSelecionadoLocal] = useState<StatusEtapa | null>(statusSelecionado);
+  const [selecionadosLocal, setSelecionadosLocal] = useState<StatusEtapa[]>(statusSelecionados);
 
   return (
     <div className="absolute top-[calc(100%+6px)] right-0 w-[240px] z-[100] bg-white rounded-[10px] shadow-[0_20px_25px_-5px_rgba(0,43,91,0.06),0_8px_10px_-6px_rgba(0,43,91,0.06)] border border-gray-100 flex flex-col text-left overflow-hidden">
@@ -39,11 +39,23 @@ export const StatusFilterPanel: React.FC<StatusFilterPanelProps> = ({
       
       <div className="flex flex-col">
         {opcoes.map((opcao) => {
-          const isSelected = selecionadoLocal === opcao.valor;
+          const isSelected = opcao.valor === null 
+            ? selecionadosLocal.length === 0 
+            : selecionadosLocal.includes(opcao.valor);
           return (
             <div
               key={opcao.label}
-              onClick={() => setSelecionadoLocal(opcao.valor)}
+              onClick={() => {
+                if (opcao.valor === null) {
+                  setSelecionadosLocal([]);
+                } else {
+                  if (selecionadosLocal.includes(opcao.valor)) {
+                    setSelecionadosLocal(selecionadosLocal.filter((s) => s !== opcao.valor));
+                  } else {
+                    setSelecionadosLocal([...selecionadosLocal, opcao.valor]);
+                  }
+                }
+              }}
               className={`flex items-center gap-3 px-4 py-2 cursor-pointer transition-colors ${
                 isSelected ? 'bg-amber-50' : 'hover:bg-gray-50'
               }`}
@@ -81,14 +93,14 @@ export const StatusFilterPanel: React.FC<StatusFilterPanelProps> = ({
 
       <div className="px-4 pb-4 pt-2 flex items-center justify-between">
         <button
-          onClick={() => setSelecionadoLocal(null)}
+          onClick={() => setSelecionadosLocal([])}
           className="text-sm text-gray-500 font-medium hover:text-gray-900 transition-colors"
         >
           Limpar
         </button>
         <button
           onClick={() => {
-            onAplicar(selecionadoLocal);
+            onAplicar(selecionadosLocal);
             onFechar();
           }}
           className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition-colors"
