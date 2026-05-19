@@ -1,6 +1,6 @@
 # Plano: Alembic — Configuração e Migration Inicial
 
-## Status: [~] Em Progresso
+## Status: [x] Concluído
 
 ---
 
@@ -121,7 +121,7 @@ pontos_norteadores, contexto_projeto, historico_contexto
 alembic upgrade head
 Saída esperada: "Running upgrade -> <hash>, create_all_tables"
 
-- [ ] Task 3.3: Verificar tabelas criadas:
+- [x] Task 3.3: Verificar tabelas criadas:
 python -c "
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
