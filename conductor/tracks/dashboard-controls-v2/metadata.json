@@ -5,15 +5,15 @@
   "status": "in_progress",
   "created": "2026-05-19T09:59:24-03:00",
   "updated": "2026-05-19T09:59:24-03:00",
-  "current_phase": 3,
-  "current_task": "4.1",
+  "current_phase": 4,
+  "current_task": "4.2",
   "phases": {
     "total": 5,
     "completed": 3
   },
   "tasks": {
     "total": 11,
-    "completed": 7
+    "completed": 8
   },
   "commits": [
     "95c56db: feat: add OrdemOpcao and ViewMode types (dashboard-controls-v2)",
@@ -29,6 +29,8 @@
     "6ffdb6d: feat: add shimmer animation to index.css (dashboard-controls-v2)",
     "e8913f7: chore: mark task 3.1 complete (dashboard-controls-v2)",
     "a67a097: feat: add ProjectTableRow component (dashboard-controls-v2)",
-    "31618e3: chore: mark task 3.2 complete (dashboard-controls-v2)"
+    "31618e3: chore: mark task 3.2 complete (dashboard-controls-v2)",
+    "0fd0569: feat: add state, refs, click outside hooks, and sorting logic to DashboardPage (dashboard-controls-v2)",
+    "b1006a5: chore: mark task 4.1 complete (dashboard-controls-v2)"
   ]
 }
