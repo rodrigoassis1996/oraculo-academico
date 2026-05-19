@@ -240,7 +240,7 @@ O div do user chip agora é envolvido em div relative:
   )}
 Usar useClickOutside(userMenuRef, () => setUserMenuAberto(false))
 
-- [ ] Task 4.5: Implementar toggle grid/lista e view de tabela
+- [x] Task 4.5: Implementar toggle grid/lista e view de tabela
 
 Referência: HTML "Dashboard — Tabela — Lista em tabela"
 
