@@ -16,7 +16,7 @@ Este documento registra as unidades de trabalho (tracks), seu status e metadados
 - [x] frontend-v2-structure | Estrutura e Fundação do Frontend V2.0 | refactor | complete | 2026-05-03
 - [x] dashboard-implementation | Dashboard de Projetos — Login, Sidebar e Páginas V2.0 | feature | complete | 2026-05-19
 - [~] dashboard-controls-v2 | Dashboard — Controles Interativos e View de Tabela | feature | in_progress | 2026-05-19
-- [ ] alembic-setup | Alembic — Configuração e Migration Inicial | feature | pending | 2026-05-19
+- [~] alembic-setup | Alembic — Configuração e Migration Inicial | feature | in_progress | 2026-05-19
 -   `FEAT-001`: Novo Agente de Referências Bibliográficas (Mendeley/Zotero).
 -   `FEAT-002`: Interface de Comparação de Versões (Draft vs GDocs).
 -   `QA-001`: Cobertura Total de Testes E2E para Ciclos de Escrita.
