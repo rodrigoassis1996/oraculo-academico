@@ -1,11 +1,11 @@
 # Plano: Alembic — Configuração e Migration Inicial
 
-## Status: [ ] Pendente
+## Status: [~] Em Progresso
 
 ---
 
 ## Fase 1 — Inicialização do Alembic
-- [ ] Task 1.1: Executar na raiz do projeto:
+- [x] Task 1.1: Executar na raiz do projeto:
 alembic init alembic
 Isso cria: alembic.ini + alembic/ com env.py, script.py.mako e versions/
 
