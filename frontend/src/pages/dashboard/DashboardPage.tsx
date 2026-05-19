@@ -197,10 +197,24 @@ const DashboardPage: React.FC = () => {
                     </div>
 
                     <div className="flex bg-gray-100 rounded-xl p-1">
-                        <button className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-primary-fixed-dim">
+                        <button 
+                            onClick={() => setViewMode('grid')}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                viewMode === 'grid' 
+                                    ? 'bg-white shadow-sm text-primary-fixed-dim' 
+                                    : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
                             <span className="material-symbols-outlined text-xl">grid_view</span>
                         </button>
-                        <button className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <button 
+                            onClick={() => setViewMode('lista')}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                                viewMode === 'lista' 
+                                    ? 'bg-white shadow-sm text-amber-600' 
+                                    : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
                             <span className="material-symbols-outlined text-xl">view_list</span>
                         </button>
                     </div>
@@ -283,38 +297,81 @@ const DashboardPage: React.FC = () => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12 items-start">
-                    <button
-                        onClick={() => setModal('novo-projeto')}
-                        className="group flex flex-col items-center justify-center h-64 bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-xl hover:bg-surface-container hover:border-primary-fixed-dim transition-all duration-300"
-                    >
-                        <div className="w-16 h-16 rounded-full bg-surface-container-lowest flex items-center justify-center mb-4 text-on-surface-variant group-hover:text-primary-fixed-dim group-hover:scale-110 transition-all duration-300 shadow-[0_8px_16px_rgba(25,28,30,0.04)]">
-                            <span className="material-symbols-outlined text-3xl">add</span>
-                        </div>
-                        <span className="font-medium text-on-surface">Novo Projeto</span>
-                    </button>
+                {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12 items-start">
+                        <button
+                            onClick={() => setModal('novo-projeto')}
+                            className="group flex flex-col items-center justify-center h-64 bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-xl hover:bg-surface-container hover:border-primary-fixed-dim transition-all duration-300"
+                        >
+                            <div className="w-16 h-16 rounded-full bg-surface-container-lowest flex items-center justify-center mb-4 text-on-surface-variant group-hover:text-primary-fixed-dim group-hover:scale-110 transition-all duration-300 shadow-[0_8px_16px_rgba(25,28,30,0.04)]">
+                                <span className="material-symbols-outlined text-3xl">add</span>
+                            </div>
+                            <span className="font-medium text-on-surface">Novo Projeto</span>
+                        </button>
 
-                    {projetosFiltrados.map(projeto => (
-                        <ProjectCard key={projeto.id} projeto={projeto} />
-                    ))}
+                        {projetosOrdenados.map(projeto => (
+                            <ProjectCard key={projeto.id} projeto={projeto} />
+                        ))}
 
-                    {estado === 'skeleton' && [1, 2, 3, 4].map(i => (
-                        <div key={i} className="bg-white rounded-xl p-5 shadow-sm min-h-[200px] flex flex-col animate-pulse">
-                            <div className="w-24 h-6 bg-gray-200 rounded-full mb-4"></div>
-                            <div className="w-full h-5 bg-gray-200 rounded-md mb-2"></div>
-                            <div className="w-2/3 h-5 bg-gray-200 rounded-md"></div>
-                            <div className="mt-auto w-20 h-4 bg-gray-200 rounded-md"></div>
+                        {estado === 'skeleton' && [1, 2, 3, 4].map(i => (
+                            <div key={i} className="bg-white rounded-xl p-5 shadow-sm min-h-[200px] flex flex-col animate-pulse">
+                                <div className="w-24 h-6 bg-gray-200 rounded-full mb-4"></div>
+                                <div className="w-full h-5 bg-gray-200 rounded-md mb-2"></div>
+                                <div className="w-2/3 h-5 bg-gray-200 rounded-md"></div>
+                                <div className="mt-auto w-20 h-4 bg-gray-200 rounded-md"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col w-full mb-12">
+                        {/* Cabeçalho de colunas */}
+                        <div className="flex items-center px-6 h-[36px] w-full">
+                            <div className="w-[200px] text-[0.72rem] text-[#9ca3af] font-medium tracking-widest uppercase text-left">STATUS</div>
+                            <div className="flex-1 text-[0.72rem] text-[#9ca3af] font-medium tracking-widest uppercase text-left">PROJETO</div>
+                            <div className="w-[160px] text-right text-[0.72rem] text-[#9ca3af] font-medium tracking-widest uppercase">ÚLTIMA ATIVIDADE</div>
                         </div>
-                    ))}
-                </div>
+
+                        {/* Botão Novo Projeto */}
+                        <button
+                            onClick={() => setModal('novo-projeto')}
+                            className="flex items-center px-6 mb-2 w-full h-[52px] rounded-[8px] border-[1.5px] border-dashed border-[rgba(245,158,11,0.40)] hover:bg-amber-50/30 transition-colors group"
+                        >
+                            <div className="flex items-center justify-center w-full gap-2 text-amber-500">
+                                <span className="material-symbols-outlined text-[20px]">add</span>
+                                <span className="font-medium text-[0.9rem]">Novo Projeto</span>
+                            </div>
+                        </button>
+
+                        {/* Linhas de projeto */}
+                        <div className="flex flex-col">
+                            {projetosOrdenados.map((projeto, index) => (
+                                <ProjectTableRow
+                                    key={projeto.id}
+                                    projeto={projeto}
+                                    isAlternate={index % 2 === 0}
+                                />
+                            ))}
+
+                            {/* Skeleton rows quando estado === 'skeleton' */}
+                            {estado === 'skeleton' && [1, 2, 3].map(i => (
+                                <div key={i} className="flex items-center px-6 w-full h-[52px] bg-white border-b border-gray-50 rounded-lg">
+                                    <div className="w-[200px] text-left">
+                                        <div className="w-[60px] h-[12px] rounded-full skeleton-shimmer"></div>
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <div className="w-[260px] h-[14px] rounded-full skeleton-shimmer"></div>
+                                    </div>
+                                    <div className="w-[160px] flex justify-end">
+                                        <div className="w-[80px] h-[12px] rounded-full skeleton-shimmer"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </>
         );
     };
-
-    // Prevent unused variables compilation errors during development
-    if (false as boolean) {
-        console.log(StatusFilterPanel, SortDropdown, UserMenuDropdown, ProjectTableRow, viewMode, setViewMode, setOrdenacao, statusDropdownAberto, sortDropdownAberto, userMenuAberto, isAdmin, projetosOrdenados);
-    }
 
     return (
         <div className="flex min-h-screen bg-surface text-on-surface font-body antialiased selection:bg-primary-fixed-dim selection:text-on-primary-fixed academic-gradient">
