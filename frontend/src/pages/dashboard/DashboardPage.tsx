@@ -149,24 +149,28 @@ const DashboardPage: React.FC = () => {
                         <span className="text-[10px] font-bold text-gray-300 ml-2 border border-gray-200 px-1 rounded">⌘K</span>
                     </div>
 
-                    <button
-                        onClick={() => {
-                            if (filtroAtivo) {
-                                setFiltroAtivo(null);
-                                setEstado('populado');
-                            } else {
-                                setFiltroAtivo('Etapa 1: Contexto');
-                                setEstado('filtrado');
-                            }
-                        }}
-                        className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo !== null
-                                ? 'bg-amber-100 border-amber-400 text-amber-900 hover:bg-amber-200'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                    >
-                        <span className="material-symbols-outlined text-lg">filter_list</span>
-                        {filtroAtivo ? `Status: ${filtroAtivo}` : 'Status'}
-                    </button>
+                    <div className="relative" ref={statusRef}>
+                        <button
+                            onClick={() => setStatusDropdownAberto(!statusDropdownAberto)}
+                            className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo !== null
+                                    ? 'bg-amber-100 border-amber-400 text-amber-900 hover:bg-amber-200'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-lg">filter_list</span>
+                            {filtroAtivo ? `Status: ${filtroAtivo}` : 'Status'}
+                        </button>
+                        {statusDropdownAberto && (
+                            <StatusFilterPanel
+                                statusSelecionado={filtroAtivo}
+                                onAplicar={(status) => {
+                                    setFiltroAtivo(status);
+                                    setEstado(status ? 'filtrado' : 'populado');
+                                }}
+                                onFechar={() => setStatusDropdownAberto(false)}
+                            />
+                        )}
+                    </div>
 
                     <button className="flex items-center gap-2 px-4 h-10 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
                         Mais recentes
