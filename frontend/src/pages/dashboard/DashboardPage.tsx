@@ -172,10 +172,29 @@ const DashboardPage: React.FC = () => {
                         )}
                     </div>
 
-                    <button className="flex items-center gap-2 px-4 h-10 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-                        Mais recentes
-                        <span className="material-symbols-outlined text-lg">expand_more</span>
-                    </button>
+                    <div className="relative" ref={sortRef}>
+                        <button
+                            onClick={() => setSortDropdownAberto(!sortDropdownAberto)}
+                            className="flex items-center gap-2 px-4 h-10 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            {ordenacao === 'recentes' && 'Mais recentes'}
+                            {ordenacao === 'antigos' && 'Mais antigos'}
+                            {ordenacao === 'nome-az' && 'Nome (A → Z)'}
+                            {ordenacao === 'nome-za' && 'Nome (Z → A)'}
+                            {ordenacao === 'etapa' && 'Etapa atual'}
+                            <span className="material-symbols-outlined text-lg">expand_more</span>
+                        </button>
+                        {sortDropdownAberto && (
+                            <SortDropdown
+                                valorAtual={ordenacao}
+                                onSelecionar={(opcao) => {
+                                    setOrdenacao(opcao);
+                                    setSortDropdownAberto(false);
+                                }}
+                                onFechar={() => setSortDropdownAberto(false)}
+                            />
+                        )}
+                    </div>
 
                     <div className="flex bg-gray-100 rounded-xl p-1">
                         <button className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-primary-fixed-dim">
