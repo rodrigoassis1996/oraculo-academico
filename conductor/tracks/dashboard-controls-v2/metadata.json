@@ -6,17 +6,19 @@
   "created": "2026-05-19T09:59:24-03:00",
   "updated": "2026-05-19T09:59:24-03:00",
   "current_phase": 1,
-  "current_task": "1.2",
+  "current_task": "2.1",
   "phases": {
     "total": 5,
-    "completed": 0
+    "completed": 1
   },
   "tasks": {
     "total": 11,
-    "completed": 1
+    "completed": 2
   },
   "commits": [
     "95c56db: feat: add OrdemOpcao and ViewMode types (dashboard-controls-v2)",
-    "328f9e3: chore: mark task 1.1 complete (dashboard-controls-v2)"
+    "328f9e3: chore: mark task 1.1 complete (dashboard-controls-v2)",
+    "5a86aef: feat: add useClickOutside custom hook (dashboard-controls-v2)",
+    "0814854: chore: mark task 1.2 complete (dashboard-controls-v2)"
   ]
 }
