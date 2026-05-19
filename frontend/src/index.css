@@ -75,3 +75,13 @@ Portadas do Google Stitch para uso global na aplicação
  background-size: 24px 24px;
  opacity: 0.1;
 }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #E5E7EB 25%, #F3F4F6 50%, #E5E7EB 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
