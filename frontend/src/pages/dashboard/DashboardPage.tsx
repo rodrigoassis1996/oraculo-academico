@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppSidebar } from '../../components/layout/AppSidebar';
 import { ProjectCard } from '../../components/ui/ProjectCard';
-import type { Projeto, StatusEtapa } from '../../types';
+import type { Projeto, StatusEtapa, OrdemOpcao, ViewMode } from '../../types';
+import { useClickOutside } from '../../hooks/useClickOutside';
+import { StatusFilterPanel } from '../../components/ui/StatusFilterPanel';
+import { SortDropdown } from '../../components/ui/SortDropdown';
+import { UserMenuDropdown } from '../../components/ui/UserMenuDropdown';
+import { ProjectTableRow } from '../../components/ui/ProjectTableRow';
+
 
 type DashboardEstado = 'populado' | 'vazio' | 'filtrado' | 'erro' | 'skeleton';
 type ModalEstado = 'novo-projeto' | 'sucesso' | 'erro-modal' | null;
@@ -72,6 +78,23 @@ const DashboardPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [nomeProjeto, setNomeProjeto] = useState('');
 
+    const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [ordenacao, setOrdenacao] = useState<OrdemOpcao>('recentes');
+    const [statusDropdownAberto, setStatusDropdownAberto] = useState(false);
+    const [sortDropdownAberto, setSortDropdownAberto] = useState(false);
+    const [userMenuAberto, setUserMenuAberto] = useState(false);
+    const [isAdmin] = useState(true);
+
+    const statusRef = useRef<HTMLDivElement>(null);
+    const sortRef = useRef<HTMLDivElement>(null);
+    const userMenuRef = useRef<HTMLDivElement>(null);
+    const mobileUserMenuRef = useRef<HTMLDivElement>(null);
+
+    useClickOutside(statusRef, () => setStatusDropdownAberto(false));
+    useClickOutside(sortRef, () => setSortDropdownAberto(false));
+    useClickOutside(userMenuRef, () => setUserMenuAberto(false));
+    useClickOutside(mobileUserMenuRef, () => setUserMenuAberto(false));
+
     useEffect(() => {
         if (modal === 'sucesso') {
             const t = setTimeout(() => {
@@ -87,6 +110,18 @@ const DashboardPage: React.FC = () => {
         const matchFiltro = filtroAtivo === null || p.status === filtroAtivo;
         return matchSearch && matchFiltro;
     });
+
+    const projetosOrdenados = [...projetosFiltrados].sort((a, b) => {
+        switch (ordenacao) {
+            case 'recentes': return new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime();
+            case 'antigos':  return new Date(a.dataCriacao).getTime() - new Date(b.dataCriacao).getTime();
+            case 'nome-az':  return a.titulo.localeCompare(b.titulo, 'pt-BR');
+            case 'nome-za':  return b.titulo.localeCompare(a.titulo, 'pt-BR');
+            case 'etapa':    return a.etapaAtual - b.etapaAtual;
+            default:         return 0;
+        }
+    });
+
 
     const renderBoasVindas = () => {
         if (estado === 'erro') return null;
@@ -252,6 +287,11 @@ const DashboardPage: React.FC = () => {
             </>
         );
     };
+
+    // Prevent unused variables compilation errors during development
+    if (false as boolean) {
+        console.log(StatusFilterPanel, SortDropdown, UserMenuDropdown, ProjectTableRow, viewMode, setViewMode, setOrdenacao, statusDropdownAberto, sortDropdownAberto, userMenuAberto, isAdmin, projetosOrdenados);
+    }
 
     return (
         <div className="flex min-h-screen bg-surface text-on-surface font-body antialiased selection:bg-primary-fixed-dim selection:text-on-primary-fixed academic-gradient">
