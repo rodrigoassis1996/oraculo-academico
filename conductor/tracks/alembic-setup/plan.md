@@ -102,7 +102,7 @@ if context.is_offline_mode():
 else:
   run_migrations_online()
 
-- [ ] Task 2.2: Verificar que o env.py importa corretamente executando:
+- [x] Task 2.2: Verificar que o env.py importa corretamente executando:
 python -c "from alembic.config import Config; from alembic import command; c = Config('alembic.ini'); print('env.py OK')"
 
 Verificação da Fase 2:
