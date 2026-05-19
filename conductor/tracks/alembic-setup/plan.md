@@ -9,7 +9,7 @@
 alembic init alembic
 Isso cria: alembic.ini + alembic/ com env.py, script.py.mako e versions/
 
-- [ ] Task 1.2: Configurar alembic.ini
+- [x] Task 1.2: Configurar alembic.ini
 Localizar a linha: sqlalchemy.url = driver://user:pass@localhost/dbname
 Substituir por: sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:5432/oraculo_academico
 Adicionar comentário: # Sobrescrito por DATABASE_URL em env.py
