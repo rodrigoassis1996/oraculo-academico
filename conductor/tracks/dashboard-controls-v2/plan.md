@@ -224,7 +224,7 @@ Labels para cada OrdemOpcao:
   nome-za  → "Nome (Z → A)"
   etapa    → "Etapa atual"
 
-- [ ] Task 4.4: Substituir user chip por versão com menu dropdown
+- [x] Task 4.4: Substituir user chip por versão com menu dropdown
 
 Referência: HTML "Menu — Usuário Administrador" e "Menu — Usuário Comum"
 
