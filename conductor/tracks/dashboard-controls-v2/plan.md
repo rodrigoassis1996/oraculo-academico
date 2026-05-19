@@ -21,7 +21,7 @@ Verificação da Fase 1:
 ---
 
 ## Fase 2 — Componentes de Dropdown
-- [ ] Task 2.1: Criar frontend/src/components/ui/StatusFilterPanel.tsx
+- [x] Task 2.1: Criar frontend/src/components/ui/StatusFilterPanel.tsx
 
 Referência: HTML "Dashboard — Cards — Filtro de status (painel aberto)"
 Extrair apenas o dropdown panel (não o botão pai):
