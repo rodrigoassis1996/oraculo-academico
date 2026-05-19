@@ -81,7 +81,7 @@ Estrutura (dropdown flutuante):
 
   onClick em cada opção → onSelecionar(opcao) + onFechar()
 
-- [ ] Task 2.3: Criar frontend/src/components/ui/UserMenuDropdown.tsx
+- [x] Task 2.3: Criar frontend/src/components/ui/UserMenuDropdown.tsx
 
 Referência: HTML "Menu — Usuário Administrador" e "Menu — Usuário Comum"
 
