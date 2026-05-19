@@ -188,7 +188,7 @@ Lógica de ordenação (aplicar após filtragem):
     }
   })
 
-- [ ] Task 4.2: Substituir botão Status por versão com dropdown real
+- [x] Task 4.2: Substituir botão Status por versão com dropdown real
 
 Referência: HTML "Dashboard — Cards — Filtro de status (painel aberto)"
 
