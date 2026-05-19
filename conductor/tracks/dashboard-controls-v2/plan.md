@@ -9,7 +9,7 @@
 export type OrdemOpcao = 'recentes' | 'antigos' | 'nome-az' | 'nome-za' | 'etapa'
 export type ViewMode = 'grid' | 'lista'
 
-- [ ] Task 1.2: Criar frontend/src/hooks/useClickOutside.ts
+- [x] Task 1.2: Criar frontend/src/hooks/useClickOutside.ts
 Hook que recebe uma ref e um callback, e chama o callback quando o usuário
 clica fora do elemento referenciado. Usar useEffect com addEventListener
 em document para detectar mousedown fora da ref.
