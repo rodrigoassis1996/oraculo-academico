@@ -166,7 +166,7 @@ Verificação da Fase 3:
 ---
 
 ## Fase 4 — Integração no DashboardPage
-- [ ] Task 4.1: Atualizar DashboardPage.tsx com novos estados e lógica
+- [x] Task 4.1: Atualizar DashboardPage.tsx com novos estados e lógica
 
 Novos estados a adicionar:
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
