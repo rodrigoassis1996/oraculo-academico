@@ -136,7 +136,7 @@ Verificação da Fase 2:
   animation: shimmer 1.5s infinite linear;
 }
 
-- [ ] Task 3.2: Criar frontend/src/components/ui/ProjectTableRow.tsx
+- [x] Task 3.2: Criar frontend/src/components/ui/ProjectTableRow.tsx
 
 Referência: HTML "Dashboard — Tabela — Lista em tabela" (linhas de projeto)
 
