@@ -111,7 +111,7 @@ Verificação da Fase 2:
 ---
 
 ## Fase 3 — Migration Inicial e Aplicação
-- [ ] Task 3.1: Gerar a migration inicial com autogenerate:
+- [x] Task 3.1: Gerar a migration inicial com autogenerate:
 alembic revision --autogenerate -m "create_all_tables"
 O arquivo gerado em alembic/versions/ deve conter op.create_table()
 para todas as 6 tabelas: usuarios, projetos, blocos_logicos,
