@@ -1,0 +1,13 @@
+{
+  "id": "alembic-setup",
+  "title": "Alembic — Configuração e Migration Inicial",
+  "type": "feature",
+  "status": "pending",
+  "created": "2026-05-19T13:14:30-03:00",
+  "updated": "2026-05-19T13:14:30-03:00",
+  "current_phase": 1,
+  "current_task": "1.1",
+  "phases": { "total": 3, "completed": 0 },
+  "tasks": { "total": 6, "completed": 0 },
+  "commits": []
+}
