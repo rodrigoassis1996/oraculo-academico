@@ -117,7 +117,7 @@ O arquivo gerado em alembic/versions/ deve conter op.create_table()
 para todas as 6 tabelas: usuarios, projetos, blocos_logicos,
 pontos_norteadores, contexto_projeto, historico_contexto
 
-- [ ] Task 3.2: Aplicar a migration ao banco PostgreSQL:
+- [x] Task 3.2: Aplicar a migration ao banco PostgreSQL:
 alembic upgrade head
 Saída esperada: "Running upgrade -> <hash>, create_all_tables"
 
