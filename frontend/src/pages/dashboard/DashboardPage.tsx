@@ -11,7 +11,6 @@ import { ProjectTableRow } from '../../components/ui/ProjectTableRow';
 
 type DashboardEstado = 'populado' | 'vazio' | 'filtrado' | 'erro' | 'skeleton';
 type ModalEstado = 'novo-projeto' | 'sucesso' | 'erro-modal' | null;
-type FiltroStatus = StatusEtapa | null;
 
 const mockProjetos: Projeto[] = [
     {
@@ -74,7 +73,7 @@ const mockProjetos: Projeto[] = [
 const DashboardPage: React.FC = () => {
     const [estado, setEstado] = useState<DashboardEstado>('populado');
     const [modal, setModal] = useState<ModalEstado>(null);
-    const [filtroAtivo, setFiltroAtivo] = useState<FiltroStatus>(null);
+    const [filtroAtivo, setFiltroAtivo] = useState<StatusEtapa[]>([]);
     const [search, setSearch] = useState('');
     const [nomeProjeto, setNomeProjeto] = useState('');
 
@@ -107,7 +106,7 @@ const DashboardPage: React.FC = () => {
 
     const projetosFiltrados = mockProjetos.filter(p => {
         const matchSearch = p.titulo.toLowerCase().includes(search.toLowerCase());
-        const matchFiltro = filtroAtivo === null || p.status === filtroAtivo;
+        const matchFiltro = filtroAtivo.length === 0 || filtroAtivo.includes(p.status);
         return matchSearch && matchFiltro;
     });
 
@@ -152,20 +151,22 @@ const DashboardPage: React.FC = () => {
                     <div className="relative" ref={statusRef}>
                         <button
                             onClick={() => setStatusDropdownAberto(!statusDropdownAberto)}
-                            className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo !== null
+                            className={`flex items-center gap-2 px-4 h-10 border rounded-xl text-sm font-medium transition-colors shadow-sm ${filtroAtivo.length > 0
                                     ? 'bg-amber-100 border-amber-400 text-amber-900 hover:bg-amber-200'
                                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <span className="material-symbols-outlined text-lg">filter_list</span>
-                            {filtroAtivo ? `Status: ${filtroAtivo}` : 'Status'}
+                            {filtroAtivo.length === 0 && 'Status'}
+                            {filtroAtivo.length === 1 && filtroAtivo[0]}
+                            {filtroAtivo.length > 1 && `Status (${filtroAtivo.length})`}
                         </button>
                         {statusDropdownAberto && (
                             <StatusFilterPanel
-                                statusSelecionado={filtroAtivo}
-                                onAplicar={(status) => {
-                                    setFiltroAtivo(status);
-                                    setEstado(status ? 'filtrado' : 'populado');
+                                statusSelecionados={filtroAtivo}
+                                onAplicar={(novosFiltros) => {
+                                    setFiltroAtivo(novosFiltros);
+                                    setEstado(novosFiltros.length > 0 ? 'filtrado' : 'populado');
                                 }}
                                 onFechar={() => setStatusDropdownAberto(false)}
                             />
@@ -277,19 +278,27 @@ const DashboardPage: React.FC = () => {
 
         return (
             <>
-                {filtroAtivo && (
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-200 rounded-full text-sm font-medium text-gray-700">
-                            {filtroAtivo}
-                            <button
-                                onClick={() => { setFiltroAtivo(null); setEstado('populado'); }}
-                                className="flex items-center justify-center hover:bg-gray-300 rounded-full p-0.5 transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[14px]">close</span>
-                            </button>
-                        </div>
+                {filtroAtivo.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 mb-8">
+                        {filtroAtivo.map(status => (
+                            <div key={status} className="flex items-center gap-1.5 px-3 py-1 bg-gray-200 rounded-full text-sm font-medium text-gray-700">
+                                {status}
+                                <button
+                                    onClick={() => {
+                                        const novos = filtroAtivo.filter(s => s !== status);
+                                        setFiltroAtivo(novos);
+                                        if (novos.length === 0) {
+                                            setEstado('populado');
+                                        }
+                                    }}
+                                    className="flex items-center justify-center hover:bg-gray-300 rounded-full p-0.5 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">close</span>
+                                </button>
+                            </div>
+                        ))}
                         <button
-                            onClick={() => { setFiltroAtivo(null); setEstado('populado'); }}
+                            onClick={() => { setFiltroAtivo([]); setEstado('populado'); }}
                             className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
                         >
                             Limpar filtros
