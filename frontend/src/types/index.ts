@@ -68,3 +68,7 @@ export interface SessionInfo {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
+
+export type OrdemOpcao = 'recentes' | 'antigos' | 'nome-az' | 'nome-za' | 'etapa';
+export type ViewMode = 'grid' | 'lista';
+
