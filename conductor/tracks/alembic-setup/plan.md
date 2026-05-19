@@ -21,7 +21,7 @@ Verificação da Fase 1:
 ---
 
 ## Fase 2 — Configuração do env.py para Async
-- [ ] Task 2.1: Substituir completamente o conteúdo de alembic/env.py pelo seguinte:
+- [x] Task 2.1: Substituir completamente o conteúdo de alembic/env.py pelo seguinte:
 
 import os
 import asyncio
