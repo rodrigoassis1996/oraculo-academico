@@ -2,14 +2,14 @@
   "id": "dashboard-controls-v2",
   "title": "Dashboard — Controles Interativos e View de Tabela",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "created": "2026-05-19T09:59:24-03:00",
   "updated": "2026-05-19T09:59:24-03:00",
   "current_phase": 5,
-  "current_task": "5.1",
+  "current_task": "",
   "phases": {
     "total": 5,
-    "completed": 4
+    "completed": 5
   },
   "tasks": {
     "total": 11,
@@ -39,6 +39,9 @@
     "1076426: feat: replace mobile and desktop user profile chips with UserMenuDropdown (dashboard-controls-v2)",
     "4792a81: chore: mark task 4.4 complete (dashboard-controls-v2)",
     "bf937e0: feat: implement interactive grid/list layout toggles and list view table (dashboard-controls-v2)",
-    "3cac3dc: chore: mark task 4.5 complete (dashboard-controls-v2)"
+    "3cac3dc: chore: mark task 4.5 complete (dashboard-controls-v2)",
+    "b00ab19: chore: update metadata.json for phase 4 complete (dashboard-controls-v2)",
+    "5d79c1e: chore: mark validation tasks 5.1 and 5.2 complete (dashboard-controls-v2)",
+    "85adbb6: chore: mark validation task 5.3 complete (dashboard-controls-v2)"
   ]
 }
