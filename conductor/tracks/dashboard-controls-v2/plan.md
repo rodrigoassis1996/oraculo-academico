@@ -53,7 +53,7 @@ Estrutura (dropdown flutuante):
     button "Aplicar" px-4 py-2 bg-amber-500 text-white rounded-lg
       onClick → onAplicar(selecionadoLocal) + onFechar()
 
-- [ ] Task 2.2: Criar frontend/src/components/ui/SortDropdown.tsx
+- [x] Task 2.2: Criar frontend/src/components/ui/SortDropdown.tsx
 
 Referência: HTML "Dashboard — Cards — Filtro de ordenação (dropdown aberto)"
 
