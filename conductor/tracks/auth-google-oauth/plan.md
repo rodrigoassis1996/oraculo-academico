@@ -61,7 +61,7 @@ def verificar_token(token: str) -> int | None:
         return None
 ```
 
-- [ ] Task 1.4: Criar database/repositories/usuario_repository.py
+- [x] Task 1.4: Criar database/repositories/usuario_repository.py
 
 Conteúdo:
 ```python
