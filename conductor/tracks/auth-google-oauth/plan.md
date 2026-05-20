@@ -285,7 +285,7 @@ Verificação da Fase 2:
 ---
 
 ## Fase 3 — Frontend Auth
-- [ ] Task 3.1: Criar frontend/src/lib/apiClient.ts
+- [x] Task 3.1: Criar frontend/src/lib/apiClient.ts
 
 Conteúdo:
 ```typescript
