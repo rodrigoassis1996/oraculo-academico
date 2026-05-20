@@ -146,7 +146,7 @@ async def get_current_user(
     return usuario
 ```
 
-- [ ] Task 2.2: Criar api/v2/routers/auth.py
+- [x] Task 2.2: Criar api/v2/routers/auth.py
 
 Conteúdo:
 ```python
