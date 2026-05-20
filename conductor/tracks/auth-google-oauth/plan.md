@@ -428,7 +428,7 @@ PARA:
 
 A rota /login deve permanecer sem proteção.
 
-- [ ] Task 3.5: Atualizar frontend/src/pages/auth/LoginPage.tsx
+- [x] Task 3.5: Atualizar frontend/src/pages/auth/LoginPage.tsx
 
 Substituir o handler do botão "Entrar com Google":
 
