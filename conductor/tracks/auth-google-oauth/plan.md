@@ -316,7 +316,7 @@ export async function logout() {
 }
 ```
 
-- [ ] Task 3.2: Criar frontend/src/store/useAuthStore.ts
+- [x] Task 3.2: Criar frontend/src/store/useAuthStore.ts
 
 Conteúdo:
 ```typescript
