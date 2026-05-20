@@ -452,8 +452,8 @@ Verificação da Fase 3:
 ---
 
 ## Fase 4 — Validação End-to-End
-- [ ] Task 4.1: Iniciar backend: uvicorn main_api:app --reload
-- [ ] Task 4.2: Iniciar frontend: cd frontend && npm run dev
+- [x] Task 4.1: Iniciar backend: uvicorn main_api:app --reload
+- [x] Task 4.2: Iniciar frontend: cd frontend && npm run dev
 - [ ] Task 4.3: Acessar http://localhost:5173/login
 Clicar em "Entrar com Google"
 Autenticar com uma conta Google
