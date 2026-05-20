@@ -254,7 +254,7 @@ async def logout():
     return response
 ```
 
-- [ ] Task 2.3: Atualizar main_api.py
+- [x] Task 2.3: Atualizar main_api.py
 
 Adicionar no topo (após os imports existentes):
 ```python
