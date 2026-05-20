@@ -7,7 +7,7 @@
 ## Fase 1 — Backend Core
 - [x] Task 1.1: Criar core/__init__.py (vazio)
 
-- [ ] Task 1.2: Criar core/config.py
+- [x] Task 1.2: Criar core/config.py
 
 Conteúdo:
 ```python
