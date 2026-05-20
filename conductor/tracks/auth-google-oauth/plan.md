@@ -368,7 +368,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 ```
 
-- [ ] Task 3.3: Criar frontend/src/components/ui/ProtectedRoute.tsx
+- [x] Task 3.3: Criar frontend/src/components/ui/ProtectedRoute.tsx
 
 Conteúdo:
 ```tsx
