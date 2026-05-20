@@ -35,7 +35,7 @@ class Settings:
 settings = Settings()
 ```
 
-- [ ] Task 1.3: Criar core/security.py
+- [x] Task 1.3: Criar core/security.py
 
 Conteúdo:
 ```python
