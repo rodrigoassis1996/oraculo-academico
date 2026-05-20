@@ -10,7 +10,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/login',
-    element: <LoginPage onGoogleLogin={() => window.location.href = '/projetos'} />,
+    element: <LoginPage />,
   },
   {
     path: '/projetos',
