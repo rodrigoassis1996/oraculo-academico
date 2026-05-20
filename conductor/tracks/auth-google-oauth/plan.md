@@ -118,7 +118,7 @@ Verificação da Fase 1:
 ---
 
 ## Fase 2 — Backend Auth Routes
-- [ ] Task 2.1: Criar api/v2/dependencies.py
+- [x] Task 2.1: Criar api/v2/dependencies.py
 
 Conteúdo:
 ```python
