@@ -17,7 +17,7 @@ class BlocoLogico(Base):
         "PontoNorteador",
         back_populates="bloco",
         lazy="selectin",
-        order_by=text("ordem_exibicao")
+        order_by="PontoNorteador.ordem_exibicao"
     )
 
     def __repr__(self) -> str:
