@@ -6,16 +6,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
+from dotenv import load_dotenv
+load_dotenv()
+from api.v2.routers.auth import router as auth_router_v2
+from core.config import settings
+
 from services.upload_manager import UploadManager, DocumentoCarregado
 from services.model_manager import ModelManager
 from config.settings import TipoArquivo
 
 app = FastAPI(title="Oráculo Acadêmico API", version="1.0.0")
+app.include_router(auth_router_v2)
 
 # Configurar CORS para o frontend React
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, restringir ao domínio do frontend
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
