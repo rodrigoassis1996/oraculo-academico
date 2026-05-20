@@ -405,7 +405,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 }
 ```
 
-- [ ] Task 3.4: Atualizar frontend/src/lib/router.tsx
+- [x] Task 3.4: Atualizar frontend/src/lib/router.tsx
 
 Importar ProtectedRoute e envolver a rota /dashboard:
 
