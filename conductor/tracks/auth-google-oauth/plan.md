@@ -454,12 +454,12 @@ Verificação da Fase 3:
 ## Fase 4 — Validação End-to-End
 - [x] Task 4.1: Iniciar backend: uvicorn main_api:app --reload
 - [x] Task 4.2: Iniciar frontend: cd frontend && npm run dev
-- [ ] Task 4.3: Acessar http://localhost:5173/login
+- [x] Task 4.3: Acessar http://localhost:5173/login
 Clicar em "Entrar com Google"
 Autenticar com uma conta Google
 Verificar redirecionamento para /dashboard
-- [ ] Task 4.4: Verificar GET http://localhost:8000/api/v2/auth/me retorna dados do usuário
-- [ ] Task 4.5: Verificar que /dashboard sem login redireciona para /login
+- [x] Task 4.4: Verificar GET http://localhost:8000/api/v2/auth/me retorna dados do usuário
+- [x] Task 4.5: Verificar que /dashboard sem login redireciona para /login
 
 Verificação da Fase 4:
 - Login completo funciona end-to-end
